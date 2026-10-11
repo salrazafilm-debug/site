@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+  LOCAL DEV SHELL ONLY.
+
+  src/index.html is a FRAGMENT. When published as a Claude Artifact the runtime
+  wraps it in exactly this skeleton (charset + viewport meta, a light reset) and
+  injects window.claude. This file reproduces that shell so the same fragment
+  runs in a plain browser, and stubs window.claude so the local-first paths
+  execute with no network. Never publish this file — publish src/index.html.
+-->
+<style>
+  :root { color-scheme: light; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 14px system-ui, sans-serif; background: #fbfbfa; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<script>
+/* Stub of the Artifact runtime. Resolves null for every capability, which is
+   exactly the "shared world unreachable" path the app is built to survive.
+   Set window.__OW_FAKE_DB = true before load to exercise an in-memory store. */
+window.claude = {
+  use: function (name) {
+    if (!window.__OW_FAKE_DB) return Promise.resolve(null);
+    return Promise.resolve(name === 'db' ? window.__owFakeDb() : null);
+  }
+};
+window.__owFakeDb = function () {
+  var store = {};
+  function col(path) {
+    store[path] = store[path] || {};
+    var api = {
+      doc: function (id) {
+        return {
+          get: function () {
+            var d = store[path][id];
+            return Promise.resolve({ id: id, exists: !!d, data: function () { return d; }, metadata: {} });
+          },
+          set: function (data) { store[path][id] = JSON.parse(JSON.stringify(data)); return Promise.resolve(); },
+          update: function (data) { Object.assign(store[path][id] || (store[path][id] = {}), data); return Promise.resolve(); },
+          delete: function () { delete store[path][id]; return Promise.resolve(); }
+        };
+      },
+      get: function () {
+        return Promise.resolve({
+          docs: Object.keys(store[path]).map(function (id) {
+            return { id: id, exists: true, data: function () { return store[path][id]; }, metadata: {} };
+          })
+        });
+      },
+      onSnapshot: function (next) { setTimeout(function () { api.get().then(next); }, 60); return function () {}; },
+      orderBy: function () { return api; }, where: function () { return api; }, limit: function () { return api; }
+    };
+    return api;
+  }
+  return { collection: col, doc: function (p) { var i = p.lastIndexOf('/'); return col(p.slice(0, i)).doc(p.slice(i + 1)); } };
+};
+</script>
+</head>
+<body>
+<!--#include src/index.html -->
+</body>
+</html>

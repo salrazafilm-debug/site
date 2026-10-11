@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Our World</title>
+<meta name="description" content="A pixel-art map of real places, drawn without map tiles. The world starts under cloud and clears where you have been.">
+<meta name="theme-color" content="#FFF8FB">
+<meta property="og:title" content="Our World">
+<meta property="og:description" content="A pixel-art map of real places, drawn without map tiles. The world starts under cloud and clears where you have been.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>%F0%9F%8C%8D</text></svg>">
+<style>
+  :root { color-scheme: light; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 14px system-ui, sans-serif; background: #FFF8FB; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<script>
+/* The open build. There is no Claude Artifact runtime here, so window.claude is
+   absent and the app takes its local-first path by design. This flag only
+   changes the copy that explains why nothing syncs. */
+window.__OW_PUBLIC = true;
+</script>
+</head>
+<body>
+<!--#include src/index.html -->
+</body>
+</html>

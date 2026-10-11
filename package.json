@@ -1,0 +1,21 @@
+{
+  "name": "our-world",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A shared travel-discovery map for two people, drawn as pixel art from embedded vector geography. No map tiles, no dependencies.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "node dev/serve.js",
+    "start": "node dev/serve.js",
+    "build": "node tools/build-standalone.js",
+    "check": "node tools/check.js",
+    "build:site": "node tools/build-site.js"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "homepage": "https://salrazafilm-debug.github.io/our-world/",
+  "license": "MIT"
+}

@@ -1,0 +1,2953 @@
+<title>Our World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#FFF8FB; --pink:#D85A92; --deep:#9F3D6D; --princess:#F3A9C7;
+  --gold:#E7B765; --softgold:#F5D88E; --land:#91B979; --landdeep:#5E8D63;
+  --water:#63B9C7; --waterlite:#A5E1E5; --fog:#C5C1CF; --cloud:#E2DDE7;
+  --ink:#3D2838; --space:#1F1D39;
+  --ink-70:rgba(61,40,56,.70); --ink-45:rgba(61,40,56,.45);
+  --panel:#FFF7FB; --panel-edge:#F2D3E2;
+  --shadow:0 6px 0 rgba(159,61,109,.16), 0 14px 34px rgba(159,61,109,.20);
+  --pxr:0px; /* pixel corners: square by design */
+  --fdisp:"Pixelify Sans", "Trebuchet MS", system-ui, sans-serif;
+  --fbody:"Quicksand", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--fbody); font-weight:500; overflow:hidden;
+  -webkit-font-smoothing:antialiased; overscroll-behavior:none;
+}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--pink); outline-offset:2px}
+
+/* ---------- shell ---------- */
+#app{position:fixed; inset:0; display:grid; grid-template-rows:auto 1fr}
+#stage{position:relative; overflow:hidden; background:var(--waterlite)}
+#map{position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:grab}
+#map.dragging{cursor:grabbing}
+
+/* ---------- topbar ---------- */
+#top{
+  display:flex; align-items:center; gap:12px;
+  padding:10px 16px calc(10px) 16px;
+  background:linear-gradient(180deg,#FFF4F9 0%, #FDE8F2 100%);
+  border-bottom:3px solid var(--panel-edge); z-index:6;
+}
+#brand{display:flex; align-items:baseline; gap:10px; min-width:0}
+#brand h1{
+  font-family:var(--fdisp); font-weight:700; font-size:clamp(19px,4.6vw,26px);
+  margin:0; letter-spacing:.5px; color:var(--deep); white-space:nowrap;
+}
+#brand h1 .w{color:var(--pink)}
+#where{
+  font-size:12px; letter-spacing:.09em; text-transform:uppercase; font-weight:700;
+  color:var(--ink-45); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+#topright{margin-left:auto; display:flex; align-items:center; gap:8px}
+.chip{
+  display:inline-flex; align-items:center; gap:7px;
+  background:var(--panel); border:2px solid var(--panel-edge);
+  padding:5px 10px; font-size:12.5px; font-weight:700; color:var(--deep);
+  box-shadow:0 3px 0 rgba(159,61,109,.10);
+}
+.chip .dot{width:9px;height:9px;background:var(--pink)}
+.chip.live .dot{background:#57B894; animation:blink 1.6s steps(2,end) infinite}
+.chip.warn{border-color:var(--gold); background:#FFF9EC}
+.chip.warn .dot{background:var(--gold)}
+#worldchip{max-width:44vw; overflow:hidden}
+#worldchip span:last-child{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+@media (max-width:560px){ #worldchip{max-width:120px; padding:5px 8px; font-size:11.5px} }
+@keyframes blink{50%{opacity:.25}}
+
+/* ---------- controls ---------- */
+.pxbtn{
+  font-family:var(--fdisp); font-weight:600; letter-spacing:.03em;
+  background:var(--panel); color:var(--deep);
+  border:3px solid var(--deep); padding:8px 12px; line-height:1;
+  box-shadow:0 4px 0 var(--deep); transition:transform .06s, box-shadow .06s;
+}
+.pxbtn:hover{background:#FFF1F7}
+.pxbtn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--deep)}
+.pxbtn[aria-pressed="true"]{background:var(--princess); color:#4A1E38}
+.pxbtn.primary{background:var(--pink); color:#fff; border-color:var(--deep); box-shadow:0 4px 0 var(--deep)}
+.pxbtn.primary:hover{background:#E2689D}
+.pxbtn.gold{background:var(--softgold); color:#5A3B12; border-color:#9A6F22; box-shadow:0 4px 0 #9A6F22}
+.pxbtn[disabled]{opacity:.5; cursor:not-allowed; box-shadow:none; transform:none}
+
+#views{
+  position:absolute; left:12px; top:12px; z-index:4;
+  display:flex; flex-direction:column; gap:6px;
+}
+#views .pxbtn{font-size:12px; padding:7px 9px; text-align:left; min-width:78px}
+#zoomer{position:absolute; left:12px; bottom:12px; z-index:4; display:flex; flex-direction:column; gap:6px}
+#zoomer .pxbtn{width:40px; height:40px; font-size:19px; padding:0; display:grid; place-items:center}
+
+#actions{
+  position:absolute; right:12px; bottom:12px; z-index:4;
+  display:flex; flex-direction:column; align-items:flex-end; gap:8px;
+}
+#actions .row{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+#actions .pxbtn{font-size:12.5px}
+#actions .icon{width:44px;height:44px;padding:0;display:grid;place-items:center}
+#actions .icon svg{width:21px;height:21px}
+
+/* ---------- toast ---------- */
+#toasts{
+  position:absolute; left:50%; top:14px; transform:translateX(-50%);
+  z-index:7; display:flex; flex-direction:column; gap:8px; align-items:center;
+  pointer-events:none; width:min(92vw,420px);
+}
+.toast{
+  background:var(--panel); border:3px solid var(--deep); box-shadow:var(--shadow);
+  padding:10px 14px; font-family:var(--fdisp); font-size:14.5px; color:var(--deep);
+  display:flex; align-items:center; gap:9px; animation:pop .28s cubic-bezier(.2,1.4,.5,1);
+  text-align:center;
+}
+.toast .em{font-size:17px}
+@keyframes pop{from{transform:translateY(-8px) scale(.96); opacity:0}}
+
+/* ---------- sheet ---------- */
+#sheet{
+  position:absolute; left:0; right:0; bottom:0; z-index:8;
+  background:var(--panel); border-top:4px solid var(--deep);
+  box-shadow:0 -10px 40px rgba(61,40,56,.22);
+  transform:translateY(102%); transition:transform .26s cubic-bezier(.2,.9,.3,1);
+  max-height:min(78vh,600px); overflow:auto; padding:14px 16px 20px;
+}
+#sheet.open{transform:none}
+#sheet h2{font-family:var(--fdisp); font-size:20px; margin:0; color:var(--deep); letter-spacing:.4px}
+.sheet-head{display:flex; align-items:flex-start; gap:12px; margin-bottom:12px}
+.sheet-head .grow{min-width:0; flex:1}
+.sheet-sub{font-size:12.5px; color:var(--ink-45); font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-top:3px}
+.closex{
+  border:3px solid var(--deep); background:var(--panel); width:34px;height:34px;
+  display:grid;place-items:center; font-family:var(--fdisp); font-size:16px; line-height:1;
+  box-shadow:0 3px 0 var(--deep); flex:none;
+}
+.field{display:flex; flex-direction:column; gap:5px; margin-bottom:11px}
+.field label{font-size:11.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-45)}
+.field input,.field textarea,.field select{
+  font:inherit; font-weight:500; color:var(--ink); background:#FFF9FC;
+  border:2.5px solid var(--panel-edge); padding:9px 11px; width:100%;
+}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--pink); outline:none}
+.field textarea{min-height:78px; resize:vertical; line-height:1.5}
+.rowfields{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+.sheet-actions{display:flex; gap:9px; flex-wrap:wrap; margin-top:6px}
+.note{font-size:13px; line-height:1.6; color:var(--ink-70)}
+.hint{font-size:12px; color:var(--ink-45); line-height:1.5}
+.photo-missing{display:block;padding:14px;border:3px dashed var(--panel-edge);font-size:12.5px;color:var(--ink-45);text-align:center;margin-bottom:11px}
+.memphoto{width:100%; max-height:260px; object-fit:cover; border:3px solid var(--panel-edge); display:block; margin-bottom:11px}
+.kv{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:13px; margin:10px 0}
+.kv dt{font-weight:700; color:var(--ink-45); letter-spacing:.05em; text-transform:uppercase; font-size:11px; align-self:center}
+.kv dd{margin:0; font-weight:600}
+.list{display:flex; flex-direction:column; gap:8px; margin-top:4px}
+.list button{
+  display:flex; gap:11px; align-items:center; text-align:left; width:100%;
+  background:#FFF9FC; border:2.5px solid var(--panel-edge); padding:9px 11px;
+}
+.list button:hover{border-color:var(--princess); background:#FFF4F9}
+.list .ico{width:22px;height:22px;flex:none}
+.list .t{font-weight:700; font-size:14px}
+.list .s{font-size:11.5px; color:var(--ink-45); font-weight:600}
+.pill{
+  display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; padding:3px 7px; border:2px solid currentColor;
+}
+.pill.example{color:#9A6F22}
+.pill.locked{color:var(--deep)}
+
+/* ---------- intro ---------- */
+#intro{
+  position:fixed; inset:0; z-index:20; display:grid; place-items:center;
+  background:linear-gradient(160deg,#FFF8FB,#FBE8F1 55%,#F6DCEA);
+  padding:24px 18px;
+}
+#intro .card{width:min(460px,100%); text-align:center}
+#intro h1{font-family:var(--fdisp); font-size:clamp(34px,9vw,50px); margin:0 0 4px; color:var(--deep); letter-spacing:1px}
+#intro p{margin:0 auto 22px; max-width:36ch; color:var(--ink-70); font-size:14.5px; line-height:1.6}
+#who{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.whobtn{
+  background:var(--panel); border:3px solid var(--deep); box-shadow:0 5px 0 var(--deep);
+  padding:16px 10px 14px; display:flex; flex-direction:column; align-items:center; gap:9px;
+}
+.whobtn:active{transform:translateY(4px); box-shadow:0 1px 0 var(--deep)}
+.whobtn canvas{image-rendering:pixelated}
+.whobtn .n{font-family:var(--fdisp); font-size:17px; color:var(--deep)}
+.whobtn .r{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-45)}
+
+/* ---------- placing mode ---------- */
+#placing{
+  position:absolute; left:50%; top:56px; transform:translateX(-50%); z-index:7;
+  background:var(--deep); color:#fff; border:3px solid #61234A; padding:9px 14px;
+  font-family:var(--fdisp); font-size:14px; display:none; align-items:center; gap:12px;
+  box-shadow:var(--shadow); width:max-content; max-width:92vw;
+}
+#placing.on{display:flex}
+#placing button{background:#fff; color:var(--deep); border:none; padding:5px 9px; font-family:var(--fdisp); font-size:12.5px}
+#crosshair{position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px 0 0 -23px; z-index:5; display:none; pointer-events:none}
+#crosshair.on{display:block}
+
+/* ---------- misc ---------- */
+#credits{
+  position:absolute; right:10px; top:10px; z-index:3;
+  font-size:10px; color:rgba(61,40,56,.42); font-weight:600; letter-spacing:.02em;
+  background:rgba(255,248,251,.7); padding:3px 7px; max-width:40vw; text-align:right;
+}
+.sparkle{position:absolute; z-index:9; pointer-events:none; font-size:18px; animation:rise 2.6s ease-out forwards}
+@keyframes rise{0%{opacity:0; transform:translateY(0) scale(.6)}15%{opacity:1}100%{opacity:0; transform:translateY(-90px) scale(1.15)}}
+
+@media (max-width:720px){
+  #views{flex-direction:row; left:10px; top:10px; gap:5px}
+  #views .pxbtn{min-width:0; padding:6px 8px; font-size:11px}
+  #zoomer{bottom:auto; top:54px; left:10px; flex-direction:row}
+  #zoomer .pxbtn{width:36px;height:36px}
+  #actions{left:10px; right:10px; bottom:10px; align-items:stretch}
+  #actions .row{justify-content:flex-end}
+  #credits{display:none}
+  #brand h1{font-size:20px}
+  #where{display:none}
+}
+@media (min-width:900px){
+  #sheet{
+    left:auto; right:0; top:0; bottom:0; width:392px;
+    border-top:none; border-left:4px solid var(--deep);
+    transform:translateX(102%); max-height:none; padding-top:18px;
+  }
+  #sheet.open{transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important; transition-duration:.001ms !important}
+}
+
+/* ---------- calendar ---------- */
+#cal{
+  position:absolute; inset:0; z-index:12; display:none;
+  background:linear-gradient(170deg,#FFF8FB 0%,#FDEDF4 60%,#F9E2EE 100%);
+  overflow:auto; padding:14px 16px 26px;
+}
+#cal.open{display:block}
+.cal-wrap{max-width:560px; margin:0 auto}
+.cal-top{display:flex; align-items:center; gap:10px; margin-bottom:16px}
+.cal-top .grow{flex:1; min-width:0}
+.cal-nav{display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:18px}
+.cal-nav .pxbtn{width:42px; height:42px; padding:0; display:grid; place-items:center; font-size:17px}
+.cal-month{
+  font-family:var(--fdisp); font-size:clamp(22px,6vw,30px); color:var(--deep);
+  letter-spacing:.6px; text-align:center; min-width:0; flex:1;
+}
+.cal-month .yr{color:var(--pink); margin-left:7px}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px}
+.cal-dow{
+  font-family:var(--fdisp); font-size:11px; letter-spacing:.06em; text-align:center;
+  color:var(--ink-45); padding-bottom:3px;
+}
+.cal-day{
+  aspect-ratio:1; border:2.5px solid #F6DDE9; background:#FFF9FC;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  font-size:12.5px; font-weight:700; color:var(--ink-45); padding:0; min-width:0;
+}
+.cal-day.blank{border-color:transparent; background:transparent}
+.cal-day.today{border-color:var(--gold); box-shadow:0 0 0 2px rgba(231,183,101,.28)}
+.cal-day.has{background:var(--princess); border-color:var(--deep); color:#4A1E38; cursor:pointer}
+.cal-day.has:hover{background:#F8BED6}
+.cal-day .hrt{font-size:11px; line-height:1}
+.cal-empty{
+  text-align:center; padding:38px 18px 34px; border:3px dashed var(--princess);
+  background:rgba(255,255,255,.55);
+}
+.cal-empty p{font-size:14.5px; color:var(--ink-70); margin:10px 0 0; line-height:1.55}
+.cal-empty .big{font-family:var(--fdisp); font-size:clamp(26px,7vw,36px); color:var(--deep); letter-spacing:.6px}
+.cal-list{margin-top:20px; display:flex; flex-direction:column; gap:9px}
+.cal-item{
+  display:flex; gap:11px; align-items:center; text-align:left; width:100%;
+  background:var(--panel); border:2.5px solid var(--panel-edge); padding:8px 11px;
+}
+.cal-item:hover{border-color:var(--pink)}
+.cal-item img{width:46px; height:46px; object-fit:cover; flex:none; border:2px solid var(--panel-edge)}
+.cal-item .ph{width:46px; height:46px; flex:none; background:#FCE9F1; display:grid; place-items:center; font-size:18px}
+.cal-item .t{font-weight:700; font-size:14px; color:var(--ink)}
+.cal-item .s{font-size:11.5px; color:var(--ink-45); font-weight:600}
+.cal-count{
+  font-family:var(--fdisp); font-size:12.5px; color:var(--deep); text-align:center;
+  margin-top:14px; letter-spacing:.04em;
+}
+
+/* ---------- opening line ---------- */
+#quote{
+  position:fixed; inset:0; z-index:18; display:none;
+  align-items:center; justify-content:center; padding:30px 22px;
+  background:radial-gradient(120% 90% at 50% 32%, #FFF9FC 0%, #FBE7F1 52%, #F3A9C7 100%);
+  cursor:pointer; text-align:center;
+}
+#quote.on{display:flex; animation:qin .7s ease-out}
+#quote.out{animation:qout .6s ease-in forwards}
+@keyframes qin{from{opacity:0}}
+@keyframes qout{to{opacity:0; visibility:hidden}}
+.q-card{max-width:44ch; display:flex; flex-direction:column; align-items:center; gap:18px}
+.q-mark{
+  font-family:var(--fdisp); font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--deep); opacity:.62;
+}
+.q-line{
+  font-family:var(--fdisp); font-weight:500;
+  font-size:clamp(21px,5.4vw,31px); line-height:1.45; color:var(--deep);
+  text-wrap:balance; margin:0; letter-spacing:.3px;
+  animation:qrise .9s .15s both cubic-bezier(.2,.9,.3,1);
+}
+@keyframes qrise{from{opacity:0; transform:translateY(14px)}}
+.q-rule{width:64px; height:3px; background:var(--gold); opacity:.75}
+.q-hint{
+  font-size:11.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-45); animation:qfade 1.2s .9s both;
+}
+@keyframes qfade{from{opacity:0}}
+.q-hearts{position:absolute; inset:0; overflow:hidden; pointer-events:none}
+.q-hearts span{position:absolute; font-size:15px; opacity:0; animation:qfloat 6s ease-in-out infinite}
+@keyframes qfloat{
+  0%{opacity:0; transform:translateY(24px) scale(.7)}
+  22%{opacity:.75}
+  100%{opacity:0; transform:translateY(-120px) scale(1.05)}
+}
+@media (prefers-reduced-motion:reduce){ .q-hearts{display:none} }
+
+/* ---------- hop between our places ---------- */
+#hop{
+  position:absolute; left:50%; bottom:74px; transform:translateX(-50%); z-index:5;
+  display:flex; align-items:stretch; max-width:calc(100vw - 24px);
+  border:3px solid var(--deep); box-shadow:0 4px 0 var(--deep); background:var(--panel);
+}
+#hop button{background:var(--panel); border:none; color:var(--deep); padding:0}
+.hop-arrow{
+  width:40px; flex:none; font-family:var(--fdisp); font-size:20px; line-height:1;
+  display:grid; place-items:center; border-right:3px solid var(--deep) !important;
+}
+#hop .hop-arrow:last-child{border-right:none !important; border-left:3px solid var(--deep) !important}
+.hop-arrow:hover{background:#FFF1F7}
+.hop-arrow[disabled]{opacity:.35; cursor:not-allowed}
+.hop-name{
+  font-family:var(--fdisp); font-size:14px; padding:0 14px !important; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:.03em;
+  display:flex; align-items:center; gap:8px; height:42px;
+}
+.hop-name:hover{background:#FFF1F7}
+.hop-name .ic{font-size:13px}
+@media (max-width:720px){ #hop{bottom:110px} .hop-name{font-size:12.5px; padding:0 10px !important} }
+
+/* ---------- full photo ---------- */
+#lightbox{
+  position:fixed; inset:0; z-index:25; display:none;
+  align-items:center; justify-content:center; padding:18px;
+  background:rgba(43,26,40,.92); cursor:zoom-out;
+}
+#lightbox.on{display:flex; animation:lbin .22s ease-out}
+@keyframes lbin{from{opacity:0}}
+#lightbox img{
+  max-width:100%; max-height:100%; object-fit:contain;
+  border:4px solid var(--princess); box-shadow:0 18px 60px rgba(0,0,0,.5);
+  image-rendering:auto;
+}
+#lightbox .lb-cap{
+  position:absolute; left:0; right:0; bottom:0; padding:14px 18px 20px;
+  font-family:var(--fdisp); font-size:14px; color:#FFF0F6; text-align:center;
+  background:linear-gradient(180deg,rgba(43,26,40,0),rgba(43,26,40,.85));
+  pointer-events:none;
+}
+#lightbox .lb-x{
+  position:absolute; top:14px; right:14px; width:38px; height:38px;
+  display:grid; place-items:center; background:var(--panel); color:var(--deep);
+  border:3px solid var(--deep); font-family:var(--fdisp); font-size:16px; cursor:pointer;
+}
+.memphoto{cursor:zoom-in}
+.cal-item img{cursor:zoom-in}
+</style>
+
+<div id="app">
+  <header id="top">
+    <div id="brand">
+      <h1>Our <span class="w">World</span></h1>
+      <span id="where">Loading the map&hellip;</span>
+    </div>
+    <div id="topright">
+      <button class="chip" id="worldchip" type="button" title="Shared world status"><span class="dot"></span><span id="worldnam">Checking</span></button>
+      <button class="chip" id="mechip" type="button" title="Switch explorer"><span class="dot"></span><span id="menam">&hellip;</span></button>
+    </div>
+  </header>
+
+  <div id="stage">
+    <canvas id="map"></canvas>
+    <svg id="crosshair" viewBox="0 0 46 46" aria-hidden="true">
+      <g fill="none" stroke="#9F3D6D" stroke-width="3">
+        <path d="M23 2v11M23 33v11M2 23h11M33 23h11"/>
+        <circle cx="23" cy="23" r="8"/>
+      </g>
+    </svg>
+
+    <nav id="hop" aria-label="Places we have been">
+      <button class="hop-arrow" type="button" id="hopPrev" aria-label="Previous place">&#8249;</button>
+      <button class="hop-name" type="button" id="hopName">Chesapeake Beach</button>
+      <button class="hop-arrow" type="button" id="hopNext" aria-label="Next place">&#8250;</button>
+    </nav>
+
+    <nav id="views" aria-label="Map scale">
+      <button class="pxbtn" data-view="local" aria-pressed="true">Local</button>
+      <button class="pxbtn" data-view="dmv" aria-pressed="false">DMV</button>
+      <button class="pxbtn" data-view="earth" aria-pressed="false">Earth</button>
+      <button class="pxbtn" data-view="space" aria-pressed="false">Space</button>
+    </nav>
+
+    <div id="zoomer">
+      <button class="pxbtn" id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+      <button class="pxbtn" id="zout" title="Zoom out" aria-label="Zoom out">&minus;</button>
+    </div>
+
+    <div id="actions">
+      <div class="row">
+        <button class="pxbtn icon" id="btnPlaces" title="Our places" aria-label="Our places">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <button class="pxbtn icon" id="btnHere" title="Clear where the map is centred" aria-label="Clear where the map is centred">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-6-5.3-6-10a6 6 0 1 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>
+        </button>
+        <button class="pxbtn icon" id="btnCalendar" title="Our calendar" aria-label="Our calendar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        </button>
+        <button class="pxbtn icon" id="btnTogether" title="Show us together" aria-label="Show us together">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 11l5-5 5 5"/><path d="M5 11v8h6v-5h2"/><path d="M13 13l4-4 4 4"/><path d="M15 13v6h4v-6"/></svg>
+        </button>
+        <button class="pxbtn icon" id="btnLocate" title="Find me" aria-label="Find me">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        </button>
+        <button class="pxbtn icon" id="btnMemory" title="Add a memory" aria-label="Add a memory">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7-4.6-7-9.2A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.8C19 15.4 12 20 12 20z"/></svg>
+        </button>
+        <button class="pxbtn icon" id="btnSurprise" title="Leave a surprise" aria-label="Leave a surprise">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="6" width="18" height="13"/><path d="M3 7l9 6 9-6"/></svg>
+        </button>
+      </div>
+      <button class="pxbtn primary" id="btnDiscover">Discover this area</button>
+    </div>
+
+    <div id="placing">
+      <span id="placingText">Tap the map to drop your pin</span>
+      <button type="button" id="placeHere">Place here</button>
+      <button type="button" id="placeCancel">Cancel</button>
+    </div>
+
+    <div id="toasts" aria-live="polite"></div>
+    <p id="credits">Map: US Census &amp; Natural Earth (public domain). Routes are simplified corridors.</p>
+    <section id="cal" aria-label="Our calendar">
+      <div class="cal-wrap">
+        <div class="cal-top">
+          <div class="grow"><h2 style="font-family:var(--fdisp);font-size:20px;margin:0;color:var(--deep);letter-spacing:.4px">Our calendar</h2>
+          <div class="sheet-sub">Every memory, by the day it happened</div></div>
+          <button class="closex" type="button" id="calClose" aria-label="Close calendar">&#10005;</button>
+        </div>
+        <div class="cal-nav">
+          <button class="pxbtn" type="button" id="calPrev" aria-label="Previous month">&#8249;</button>
+          <div class="cal-month" id="calMonth">May 2026</div>
+          <button class="pxbtn" type="button" id="calNext" aria-label="Next month">&#8250;</button>
+        </div>
+        <div id="calBody"></div>
+      </div>
+    </section>
+    <aside id="sheet" role="dialog" aria-modal="false" aria-label="Details"></aside>
+  </div>
+</div>
+
+<div id="lightbox" role="dialog" aria-label="Photo">
+  <button class="lb-x" type="button" id="lbClose" aria-label="Close photo">&#10005;</button>
+  <img id="lbImg" alt="">
+  <div class="lb-cap" id="lbCap"></div>
+</div>
+
+<div id="quote" role="dialog" aria-label="A note for you">
+  <div class="q-hearts" aria-hidden="true"></div>
+  <div class="q-card">
+    <span class="q-mark">Our World</span>
+    <div class="q-rule"></div>
+    <p class="q-line" id="qLine"></p>
+    <span class="q-hint">Tap anywhere to open the map</span>
+  </div>
+</div>
+
+<div id="intro">
+  <div class="card">
+    <h1>Our World</h1>
+    <p>A map of everywhere the two of you have been &mdash; and everywhere you haven&rsquo;t yet. Who&rsquo;s exploring?</p>
+    <div id="who">
+      <button class="whobtn" data-who="bruce"><canvas width="72" height="72" data-sprite="cottage-gold"></canvas><span class="n">Bruce</span><span class="r">Chesapeake Beach</span></button>
+      <button class="whobtn" data-who="elena"><canvas width="78" height="82" data-sprite="castle"></canvas><span class="n">Princess Elena</span><span class="r">Arnold, MD</span></button>
+    </div>
+  </div>
+</div>
+
+<script src="geo.js"></script>
+<script>
+(function () {
+'use strict';
+
+/* ============================== constants ============================== */
+var C = {
+  bg:'#FFF8FB', pink:'#D85A92', deep:'#9F3D6D', princess:'#F3A9C7',
+  gold:'#E7B765', softgold:'#F5D88E', land:'#91B979', landdeep:'#5E8D63',
+  water:'#63B9C7', waterlite:'#A5E1E5', fog:'#C5C1CF', cloud:'#E2DDE7',
+  ink:'#3D2838', space:'#1F1D39',
+  landmuted:'#CBC9BE', landmutededge:'#B3B0A4'
+};
+var HOMES = {
+  bruce: { who:'bruce', name:'Bruce', label:'Chesapeake Beach', lat:38.6935, lng:-76.5333, r:24 },
+  elena: { who:'elena', name:'Princess Elena', label:'Arnold, Maryland', lat:39.0332, lng:-76.5030, r:24 }
+};
+/* The static build served from GitHub Pages sets this. There is no shared
+   world there, so the copy that explains the offline state changes. */
+var PUBLIC_BUILD = !!window.__OW_PUBLIC;
+var REVEAL_KM = 20;          // a discovery clears a region this wide
+var UNLOCK_KM = 3;           // how close you must be for a sealed letter to open
+var PIXEL = 3;               // map pixel-art block size (css px)
+var FOGPIXEL = 6;            // chunkier clouds
+
+/* No pre-placed landmarks. Every mark on this map is one of ours. */
+
+var PARKS = [
+  ['Quiet Waters Park',38.9333,-76.4900],['Sandy Point State Park',39.0117,-76.3990],
+  ['Calvert Cliffs State Park',38.3919,-76.4197],['Flag Ponds Nature Park',38.4372,-76.4413],
+  ['Jefferson Patterson Park',38.3906,-76.5069],['Greenwell State Park',38.3467,-76.5147],
+  ['Patuxent River Park',38.7700,-76.7100],['Rock Creek Park',38.9500,-77.0450],
+  ['Great Falls Park',38.9976,-77.2530],['Downs Park',39.1200,-76.4350],
+  ['Kinder Farm Park',39.1058,-76.6003],['Terrapin Nature Park',38.9880,-76.3400],
+  ['Assateague Island',38.0700,-75.2200],['Shenandoah National Park',38.5300,-78.4400]
+];
+
+/* Places worth a proper icon. Drawn only once the area around them is cleared. */
+var LM_ICON = { fallsTall: '\ud83d\udca7', fallsWide: '\ud83c\udf0a', cup: '\u2615', mountain: '\u26f0\ufe0f', sun: '\u2728', liberty: '\ud83d\uddfd', skyline: '\ud83c\udfd9\ufe0f', lighthouse: '\u26f5' };
+var LANDMARKS = [
+  ['bushkill','Bushkill Falls Park',41.1165,-75.0121,'fallsTall',
+   'Eight waterfalls strung down a gorge in the Poconos. The main drop falls about a hundred feet, and the boardwalks take you right under it.'],
+  ['greatfalls','Great Falls Park',38.9976,-77.2530,'fallsWide',
+   'The Potomac drops seventy-six feet in less than a mile here and squeezes through Mather Gorge. The Virginia side, looking across at Maryland.'],
+  ['dales','Dale’s Pocono Bistro',41.0092,-75.2510,'cup',
+   'Breakfast and lunch on Route 611 in Bartonsville, halfway between the mountain and the falls. Where we ate.'],
+  ['lanterns','Night Lights, Pocono Raceway',41.0536,-75.5110,'sun',
+   'The lantern festival on the tri-oval at Long Pond. Everyone let theirs go at once and the whole sky went gold.', 2.0, 1],
+  ['camelback','Camelback Resort',41.0514,-75.3553,'mountain',
+   'Up the mountain at Tannersville — lifts, trails and the whole Pocono ridge underneath you.', 1.2],
+  ['nyc','New York City',40.7580,-73.9855,'liberty',
+   'Times Square, and the whole city around it. The furthest either of us has taken this map — and we got here together.', 1.7],
+  /* Planned — drawn on the map before we get there, and they stay sealed until we do.
+     Tuple slot 8 marks a landmark as planned. */
+  ['chicago','Chicago',41.8781,-87.6298,'skyline',
+   'Where the plane sets down. The river cutting through the towers, the lake going on like an ocean, and the whole skyline waiting on us.',
+   1.5, 0, 1],
+  ['milwaukee','Milwaukee',43.0389,-87.9065,'lighthouse',
+   'Ninety miles up the lake shore from Chicago. Quieter water, a lighthouse on the point, and a second city on the same trip.',
+   1.4, 0, 1]
+];
+
+/* The flight out west — home, then Chicago, then up the shore to Milwaukee. */
+var FLIGHT = [
+  [HOMES.bruce.lat, HOMES.bruce.lng],
+  [41.8781, -87.6298],
+  [43.0389, -87.9065]
+];
+
+/* Starter pins: local suggestions only. They are never written to the shared
+   world until someone actually fills one in. */
+var STARTERS = [
+  ['s1','Your first memory here',38.6927,-76.5324],
+  ['s2','Something from Annapolis',38.9776,-76.4844],
+  ['s3','Crossing the bridge',38.9930,-76.3650]
+];
+
+/* ============================== sprites ============================== */
+var SP = {};
+SP.cottage = [
+  '....oooo....','...orrrro...','..orrrrrro..','.orrrrrrrro.',
+  'orrrrrrrrrro','owwwwwwwwwwo','ow.ggw.wwwwo','ow.ggw.wwwwo',
+  'owwwwwddwwwo','owwwwwddwwwo','owwwwwddwwwo','oooooooooooo'
+];
+SP.crown = ['c.c.c','ccccc'];
+SP.castle = [
+  '......f......','......p......','.....RRR.....','....RRRRR....',
+  '...RRRRRRR...','.f.wwwwwww.f.','.p.wwgggww.p.','RRRwwwwwwwRRR',
+  'wwwwwwwwwwwww','wgwwwSSSwwwgw','wwwwwdddwwwww','wwwwwdddwwwww',
+  'wwwwwdddwwwww','SSSSSSSSSSSSS'
+];
+SP.heart = [
+  '.hh...hh.','hhhhhhhhh','hhhhhhhhh','hhhhhhhhh',
+  '.hhhhhhh.','..hhhhh..','...hhh...','....h....'
+];
+SP.qblock = [
+  'ooooooooo','oGGGGGGGo','oGGkkkGGo','oGGGGkGGo','oGGGkkGGo',
+  'oGGGkGGGo','oGGGGGGGo','oGGGkGGGo','ooooooooo'
+];
+SP.envelope = [
+  'ooooooooooo','oEEEEEEEEEo','oEkEEEEEkEo','oEEkEEEkEEo',
+  'oEEEkkkEEEo','oEEEhhhEEEo','oEEEEhEEEEo','ooooooooooo'
+];
+/* Bushkill: a tall narrow plunge down a forested gorge. */
+SP.fallsTall = [
+  '.tt...tt.','ttt...ttt','tttkkkttt','ttkwwwktt','tkkwwwkkt',
+  'kkkwwwkkk','kkkwwwkkk','kkkwwwkkk','kkkwwwkkk','kkkwwwkkk',
+  'kkkwwwkkk','kkwwwwwkk','kwwwwwwwk','fffffffff','bbbbbbbbb',
+  '.bbbbbbb.','..bbbbb..'
+];
+/* Great Falls: the whole Potomac, wide, breaking over rock ledges. */
+SP.fallsWide = [
+  'WWWWWWWWWWWWWWWWWWW','WWWWWWWWWWWWWWWWWWW','kkwwwkkkwwwkkkwwwkk',
+  'kkwwwkkkwwwkkkwwwkk','kkwwwkkwwwwwkkwwwkk','kwwwwwkwwwwwkwwwwwk',
+  'wwwwwwwwwwwwwwwwwww','fffffffffffffffffff','bbbbbbbbbbbbbbbbbbb',
+  '.bbbbbbbbbbbbbbbbb.','..bbbbbbbbbbbbbbb..'
+];
+SP.sun = [
+  '.......R.......','.......R.......','.......R.......','..R....R....R..',
+  '...R..SSS..R...','....RSSSSSR....','....SSWWWSS....','RRRRSSWWWSSRRRR',
+  '....SSWWWSS....','....RSSSSSR....','...R..SSS..R...','..R....R....R..',
+  '.......R.......','.......R.......','.......R.......'
+];
+SP.lantern = [
+  '...ooooo...','..oLLLLLo..','.oLLLLLLLo.','oLLLLLLLLLo',
+  'oLLLLWLLLLo','oLLLWWWLLLo','oLLLLWLLLLo','.oLLLLLLLo.',
+  '.oLLLLLLLo.','..oLLLLLo..','..offfffo..','...offfo...','....ooo....'
+];
+SP.mountain = [
+  '....f..........','....p..........','...sss.........','..sssss........',
+  '.MMsssNN...s...','MMMMMMNNN.sss..','MMMMMMMNNNsssN.','MMMMMMMMNNNNNNN',
+  'MMMMMMMMMNNNNNN','MMMMMMMMMMNNNNN','ggggggggggggggg'
+];
+SP.liberty = [
+  '.........f....','........fFf...','.......ffFff..','........fff...',
+  '.........t....','........ttt...','.........t....','.........g....',
+  '..ccc....g....','.ccccc...g....','..ggg....g....','..gGg...gg....',
+  '.ggggggggg....','bbgggggggg....','.bggggggg.....','..gGgggg......',
+  '..ggggggg.....','.ggggggggg....','PPPPPPPPPPP...','.PPPpPPpPP....',
+  '.PPPPPPPPP....','PPPPPPPPPPP...'
+];
+SP.cup = [
+  '...hh.hh....','...hhhhh....','....hhh.....','.....h......','............',
+  '.wwwwwwww...','.wccccccwHH.','.wWWWWWWw.H.','.wWWWWWWwHH.','.wWWWWWWw...',
+  '..wwwwww....','.SSSSSSSSS..','..SSSSSSS...'
+];
+SP.tree = ['..t..','.ttt.','ttttt','.ttt.','ttttt','..b..','..b..'];
+SP.falls = [
+  'gkkkkkkkkg','kkrwwwwrkk','kkrwwwwrkk','kkrwwwwrkk',
+  'kkkwwwwkkk','kkkwwwwkkk','kkkwwwwkkk','kkrwwwwrkk',
+  'krwwwwwwrk','rbffbbffbr','bbbbbbbbbb','.bbbbbbbb.'
+];
+SP.you  = ['..p..','.ppp.','ppppp','.ppp.','..p..'];
+/* Chicago: the lakefront skyline, Willis twin antennas over the river towers. */
+SP.skyline = [
+  '...a...a.........','...a...a.........','...ddddd.........','...dwdwd.........',
+  '...ddddd.........','...dwdwd..a......','...ddddd..a......','...dwdwd.mmm.....',
+  '...ddddd.mwm.....','.lldddddmmmm.....','.lwdwdwdmwmm..ll.','.llddddddmmm..ll.',
+  'llllwdwdwmwmm.lll','llllddddddmmmllll','lllldwdwdwmwmwlll','lllllllllllllllll',
+  'kkkkkkkkkkkkkkkkk','kkkkkkkkkkkkkkkkk'
+];
+/* Milwaukee: a lighthouse on the Lake Michigan shore. */
+SP.lighthouse = [
+  '.....ooo.....','....ooooo....','....oLLLo....','....oLLLo....','....ooooo....',
+  '..WWWWWWWWW..','...wwwwwww...','...ppppppp...','...wwwwwww...','...ppppppp...',
+  '..wwwwwwwww..','..ppppppppp..','..wwwwwwwww..','.wwwwwwwwwww.','.wwwwDDDwwww.',
+  '.wwwwDDDwwww.','BBBBBBBBBBBBB','kkkkkkkkkkkkk','kkkkkkkkkkkkk'
+];
+/* The flight out. Nose points west. */
+SP.plane = [
+  '.....WW........','.....WW........','.....WW........','.....WWW....WW.',
+  '..WWWWWWWWWWWWW','WWdWWWWWWWWWWWW','..WWWWWWWWWWWWW','.....WWW....WW.',
+  '.....WW........','.....WW........','.....WW........'
+];
+
+var PAL = {
+  gold:   {r:C.gold, w:'#FBF0DC', o:'#7A5518', d:'#8E5F1C', g:C.waterlite, c:C.softgold},
+  pink:   {r:C.pink, w:'#FFF0F6', o:'#6E2549', d:'#9F3D6D', g:C.waterlite, c:C.softgold},
+  heartP: {h:C.pink, o:'#6E2549'},
+  heartG: {h:'#E8C4D6', o:'#B98FA6'},
+  q:      {G:C.gold, k:'#6B4410', o:'#6B4410'},
+  env:    {E:'#FFF3F8', k:C.princess, h:C.pink, o:'#6E2549'},
+  tree:   {t:C.landdeep, b:'#7A5B3A'},
+  castle: {R:C.pink, w:'#FFF0F6', S:C.princess, g:C.waterlite, d:C.deep, f:C.softgold, p:'#8C7460'},
+  you:    {p:C.pink},
+  fallsTall:{k:'#5C4A3C', w:'#FBFEFF', f:'#DFF4F8', b:C.water, t:'#3E6B4C'},
+  fallsWide:{k:'#867E6E', w:'#FBFEFF', W:C.waterlite, f:'#DFF4F8', b:C.water},
+  sun:    {S:'#F0B429', W:'#FFF0BE', R:'#DBA028'},
+  lantern:{L:'#FFC978', W:'#FFF6D8', f:'#FF9A52', o:'#B4722A'},
+  mountain:{M:'#A79FC4', N:'#847BA6', s:'#FFFFFF', f:C.pink, p:'#6E5A48', g:'#4F6E58'},
+  liberty:{f:'#FFD34D', F:'#FFF6CF', t:C.gold, g:'#79C9AE', G:'#4FA88C', c:'#8FD9C0', b:'#F6ECD8', P:'#D0AC83', p:'#9C7A55'},
+  cup:    {h:C.pink, w:'#FFF0F6', W:C.princess, c:'#8C5A3C', H:'#FFF0F6', S:C.gold},
+  falls:  {k:'#6E5A48', r:'#8C7460', w:'#FBFEFF', b:C.water, f:C.waterlite, g:C.landdeep},
+  skyline:{a:'#6E2549', d:'#5E4B6B', m:'#7A6690', l:'#9B87AE', w:'#FFE9A8', k:C.waterlite},
+  lighthouse:{o:'#B08A6E', L:'#FFF0B4', W:'#C9BFD8', w:'#FFFFFF', p:C.pink, D:'#8C6A78', B:'#E8DCE6', k:C.waterlite},
+  plane:  {W:'#FFFFFF', d:C.pink}
+};
+
+function drawSprite(ctx, grid, pal, cx, cy, s, outline) {
+  var h = grid.length, w = grid[0].length;
+  var x0 = Math.round(cx - (w * s) / 2), y0 = Math.round(cy - h * s);
+  var i, j, ch;
+  if (outline) {
+    ctx.fillStyle = outline;
+    var offs = [[-s,0],[s,0],[0,-s],[0,s]];
+    for (var k = 0; k < 4; k++) {
+      for (i = 0; i < h; i++) for (j = 0; j < w; j++) {
+        if (grid[i][j] !== '.') ctx.fillRect(x0 + j*s + offs[k][0], y0 + i*s + offs[k][1], s, s);
+      }
+    }
+  }
+  for (i = 0; i < h; i++) for (j = 0; j < w; j++) {
+    ch = grid[i][j];
+    if (ch === '.') continue;
+    var col = pal[ch];
+    if (!col) continue;
+    ctx.fillStyle = col;
+    ctx.fillRect(x0 + j*s, y0 + i*s, s, s);
+  }
+  return { x:x0, y:y0, w:w*s, h:h*s };
+}
+/* sprites are anchored at the bottom-centre (a pin sits on its point) */
+
+/* ============================== geo maths ============================== */
+var R_EARTH = 6371;
+function rad(d){ return d * Math.PI / 180; }
+function haversine(a1,o1,a2,o2){
+  var dLat = rad(a2-a1), dLon = rad(o2-o1);
+  var s = Math.sin(dLat/2)*Math.sin(dLat/2) +
+          Math.cos(rad(a1))*Math.cos(rad(a2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return 2*R_EARTH*Math.asin(Math.min(1,Math.sqrt(s)));
+}
+function worldSize(z){ return 256 * Math.pow(2, z); }
+function lngToWX(lng, z){ return (lng + 180) / 360 * worldSize(z); }
+function latToWY(lat, z){
+  var s = Math.sin(rad(Math.max(-85.05,Math.min(85.05,lat))));
+  return worldSize(z) * (0.5 - Math.log((1+s)/(1-s)) / (4*Math.PI));
+}
+function wxToLng(x, z){ return x / worldSize(z) * 360 - 180; }
+function wyToLat(y, z){
+  var n = Math.PI - 2*Math.PI*y/worldSize(z);
+  return 180/Math.PI * Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));
+}
+/* km per screen pixel at a given latitude + zoom */
+function kmPerPx(lat, z){ return 156.543 * Math.cos(rad(lat)) / Math.pow(2, z); }
+
+/* ============================== decode geo pack ============================== */
+function decodeRings(b64, scale) {
+  var bin = atob(b64), n = bin.length, bytes = new Uint8Array(n), i;
+  for (i = 0; i < n; i++) bytes[i] = bin.charCodeAt(i);
+  var p = 0;
+  function u(){ var r=0, sh=0, c; do { c = bytes[p++]; r |= (c & 127) << sh; sh += 7; } while (c & 128); return r >>> 0; }
+  function v(){ var x = u(); return (x >>> 1) ^ -(x & 1); }
+  var nr = u(), out = [], px = 0, py = 0;
+  for (var k = 0; k < nr; k++) {
+    var np = u(), ring = new Float64Array(np * 2);
+    for (var j = 0; j < np; j++) { px += v(); py += v(); ring[j*2] = px/scale; ring[j*2+1] = py/scale; }
+    out.push(ring);
+  }
+  return out;
+}
+var GEO = { states: [], rivers: [], world: [] };
+(function buildGeo(){
+  var g = window.OW_GEO;
+  for (var i = 0; i < g.states.length; i++) {
+    GEO.states.push({ ab: g.states[i].ab, core: g.states[i].core, rings: decodeRings(g.states[i].b, 1000) });
+  }
+  GEO.rivers = decodeRings(g.rivers, 1000);
+  GEO.world  = decodeRings(g.world, 10);
+})();
+
+/* ============================== state ============================== */
+var S = {
+  who: null,
+  mode: 'map',                // 'map' | 'globe'
+  view: 'local',
+  center: { lat: HOMES.bruce.lat, lng: HOMES.bruce.lng },
+  zoom: 11.2,
+  globe: { lon: -77, lat: 38, scale: 1 },   // scale 1 = earth view, <0.5 = space
+  regions: [],                // discovered, from db
+  memories: [], surprises: [], deleted: {},
+  me: null,                   // last known gps fix
+  placing: null,              // {kind:'memory'|'surprise'}
+  selected: null,
+  db: null, assets: null,
+  starterUsed: {}
+};
+try { S.starterUsed = JSON.parse(localStorage.getItem('ow.starters') || '{}'); } catch (e) {}
+
+/* Places baked into the page. These show even if the shared world is not reachable. */
+/* The private copy of this map carries its own memories here. The open build
+   ships empty: anything you pin is yours and stays in your browser. */
+var SEED_MEMORIES = [];
+
+var LS = {
+  key: function (n) { return 'ow.cache.' + n; },
+  read: function (n) { try { return JSON.parse(localStorage.getItem(LS.key(n)) || '[]') || []; } catch (e) { return []; } },
+  write: function (n, rows) { try { localStorage.setItem(LS.key(n), JSON.stringify(rows)); } catch (e) {} }
+};
+function mergeById(a, b) {
+  var out = a.slice(), seen = {}, i;
+  for (i = 0; i < out.length; i++) seen[out[i].id] = 1;
+  for (i = 0; i < b.length; i++) if (!seen[b[i].id]) { seen[b[i].id] = 1; out.push(b[i]); }
+  return out;
+}
+
+var SEED_REGIONS = [
+  { id:'seed-bushkill', name:'Bushkill Falls', lat:41.1165, lng:-75.0121, r:20, by:'bruce', seeded:1 },
+  { id:'seed-bartonsville', name:'Bartonsville', lat:41.0092, lng:-75.2510, r:18, by:'bruce', seeded:1 },
+  { id:'seed-nyc', name:'New York City', lat:40.7580, lng:-73.9855, r:26, by:'bruce', seeded:1 },
+  { id:'seed-camelback', name:'Tannersville', lat:41.0514, lng:-75.3553, r:16, by:'bruce', seeded:1 },
+  { id:'seed-longpond', name:'Long Pond', lat:41.0536, lng:-75.5110, r:16, by:'bruce', seeded:1 },
+  { id:'seed-greatfalls', name:'Great Falls', lat:38.9976, lng:-77.2530, r:15, by:'bruce', seeded:1 }
+];
+
+function allRegions() {
+  var out = [
+    { id:'home-bruce', name:'Chesapeake Beach', lat:HOMES.bruce.lat, lng:HOMES.bruce.lng, r:HOMES.bruce.r, home:1 },
+    { id:'home-elena', name:'Arnold & Annapolis', lat:HOMES.elena.lat, lng:HOMES.elena.lng, r:HOMES.elena.r, home:1 },
+    { id:'known-pg', name:"Prince George's County", lat:38.83, lng:-76.85, r:26, home:1 },
+    { id:'known-dc', name:'Washington, DC', lat:38.905, lng:-77.02, r:18, home:1 }
+  ];
+  /* a seeded place steps aside once the same spot arrives from the shared world */
+  for (var i = 0; i < SEED_REGIONS.length; i++) {
+    var dup = false;
+    for (var j = 0; j < S.regions.length; j++) {
+      if (haversine(SEED_REGIONS[i].lat, SEED_REGIONS[i].lng, S.regions[j].lat, S.regions[j].lng) < 5) { dup = true; break; }
+    }
+    if (!dup) out.push(SEED_REGIONS[i]);
+  }
+  return out.concat(S.regions);
+}
+function isRevealed(lat, lng, slack) {
+  var rs = allRegions();
+  for (var i = 0; i < rs.length; i++) {
+    if (haversine(lat, lng, rs[i].lat, rs[i].lng) <= rs[i].r * (slack || 0.94)) return true;
+  }
+  return false;
+}
+function regionAt(lat, lng) {
+  var rs = allRegions(), best = null, bd = 1e9;
+  for (var i = 0; i < rs.length; i++) {
+    var d = haversine(lat, lng, rs[i].lat, rs[i].lng);
+    if (d <= rs[i].r && d < bd) { bd = d; best = rs[i]; }
+  }
+  return best;
+}
+function nearestTown(lat, lng) {
+  var T = window.OW_TOWNS, best = null, bd = 1e9;
+  for (var i = 0; i < T.length; i++) {
+    var d = haversine(lat, lng, T[i][1], T[i][2]);
+    if (d < bd) { bd = d; best = T[i]; }
+  }
+  return { name: best ? best[0] : 'Somewhere new', km: bd };
+}
+
+/* deterministic wobble so each cleared region keeps the same organic outline */
+function blobRadii(seed) {
+  var a = seed >>> 0, out = [], n = 26;
+  for (var i = 0; i < n; i++) {
+    a = (a * 1664525 + 1013904223) >>> 0;
+    out.push(0.86 + (a / 4294967296) * 0.30);
+  }
+  return out;
+}
+var blobCache = {};
+function blobFor(id) {
+  if (!blobCache[id]) {
+    var h = 2166136261;
+    for (var i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = (h * 16777619) >>> 0; }
+    blobCache[id] = blobRadii(h);
+  }
+  return blobCache[id];
+}
+function blobPath(ctx, cx, cy, r, radii) {
+  var n = radii.length, pts = [], i;
+  for (i = 0; i < n; i++) {
+    var a = i / n * Math.PI * 2;
+    pts.push([cx + Math.cos(a) * r * radii[i], cy + Math.sin(a) * r * radii[i]]);
+  }
+  ctx.beginPath();
+  var mx = (pts[n-1][0] + pts[0][0]) / 2, my = (pts[n-1][1] + pts[0][1]) / 2;
+  ctx.moveTo(mx, my);
+  for (i = 0; i < n; i++) {
+    var nx = pts[(i+1) % n], c = pts[i];
+    ctx.quadraticCurveTo(c[0], c[1], (c[0]+nx[0])/2, (c[1]+nx[1])/2);
+  }
+  ctx.closePath();
+}
+
+/* ============================== canvas setup ============================== */
+var cv = document.getElementById('map'), ctx = cv.getContext('2d');
+var baseCv = document.createElement('canvas'), baseCtx = baseCv.getContext('2d');
+var fogCv  = document.createElement('canvas'), fogCtx  = fogCv.getContext('2d');
+var W = 0, H = 0, DPR = 1, baseDirty = true;
+var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var canFilter = typeof baseCtx.filter === 'string';
+
+function resize() {
+  var r = cv.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  baseCv.width  = Math.max(1, Math.ceil(W / PIXEL));    baseCv.height = Math.max(1, Math.ceil(H / PIXEL));
+  fogCv.width   = Math.max(1, Math.ceil(W / FOGPIXEL)); fogCv.height  = Math.max(1, Math.ceil(H / FOGPIXEL));
+  baseDirty = true;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+/* screen <-> world helpers for the current map view */
+function proj(lat, lng) {
+  var z = S.zoom;
+  return {
+    x: lngToWX(lng, z) - lngToWX(S.center.lng, z) + W / 2,
+    y: latToWY(lat, z) - latToWY(S.center.lat, z) + H / 2
+  };
+}
+function unproj(x, y) {
+  var z = S.zoom;
+  return {
+    lng: wxToLng(lngToWX(S.center.lng, z) + x - W / 2, z),
+    lat: wyToLat(latToWY(S.center.lat, z) + y - H / 2, z)
+  };
+}
+function kmToPx(km) { return km / kmPerPx(S.center.lat, S.zoom); }
+
+/* ============================== base map layer ============================== */
+function drawBase() {
+  var g = baseCtx, s = PIXEL, bw = baseCv.width, bh = baseCv.height;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, bw, bh);
+
+  /* water: a pastel wash, then chunky wave dashes pinned to the world so they
+     stay put as you pan rather than swimming about */
+  var grad = g.createLinearGradient(0, 0, 0, bh);
+  grad.addColorStop(0, '#BDECEF'); grad.addColorStop(0.55, C.waterlite); grad.addColorStop(1, C.water);
+  g.fillStyle = grad; g.fillRect(0, 0, bw, bh);
+
+  var z = S.zoom;
+  var ox = lngToWX(S.center.lng, z) - W / 2, oy = latToWY(S.center.lat, z) - H / 2;
+  function P(lng, lat) { return [ (lngToWX(lng, z) - ox) / s, (latToWY(lat, z) - oy) / s ]; }
+
+  var step = 13, dash = 4;
+  var wx0 = Math.floor(ox / s / step) * step, wy0 = Math.floor(oy / s / step) * step;
+  g.fillStyle = 'rgba(255,255,255,.34)';
+  for (var wy = wy0; wy < wy0 + bh + step; wy += step) {
+    var rowi = Math.round(wy / step);
+    for (var wx = wx0; wx < wx0 + bw + step * 2; wx += step) {
+      var jog = (rowi % 2) * (step / 2) + ((Math.round(wx / step) * 7 + rowi * 13) % 3);
+      g.fillRect(Math.round(wx + jog - ox / s), Math.round(wy - oy / s), dash, 1);
+    }
+  }
+
+  /* land — county polygons overlap into one silhouette; core states read brighter */
+  var i, k, j, st, ring, p;
+
+  /* foam where water meets land */
+  g.strokeStyle = 'rgba(255,255,255,.62)';
+  g.lineWidth = 2.2; g.lineJoin = 'round';
+  for (i = 0; i < GEO.states.length; i++) {
+    st = GEO.states[i];
+    for (k = 0; k < st.rings.length; k++) {
+      ring = st.rings[k];
+      g.beginPath();
+      for (j = 0; j < ring.length; j += 2) {
+        p = P(ring[j], ring[j+1]);
+        if (j === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]);
+      }
+      g.closePath(); g.stroke();
+    }
+  }
+
+  for (i = 0; i < GEO.states.length; i++) {
+    st = GEO.states[i];
+    g.fillStyle = st.core ? C.land : C.landmuted;
+    for (k = 0; k < st.rings.length; k++) {
+      ring = st.rings[k];
+      g.beginPath();
+      for (j = 0; j < ring.length; j += 2) {
+        p = P(ring[j], ring[j+1]);
+        if (j === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]);
+      }
+      g.closePath(); g.fill();
+    }
+  }
+  /* county / regional boundaries — faint texture, only once you are close enough */
+  if (z > 6.2) {
+    g.lineWidth = 0.4; g.lineJoin = 'round';
+    for (i = 0; i < GEO.states.length; i++) {
+      st = GEO.states[i];
+      g.strokeStyle = st.core ? 'rgba(94,141,99,.55)' : 'rgba(140,138,128,.45)';
+      for (k = 0; k < st.rings.length; k++) {
+        ring = st.rings[k];
+        g.beginPath();
+        for (j = 0; j < ring.length; j += 2) {
+          p = P(ring[j], ring[j+1]);
+          if (j === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]);
+        }
+        g.closePath(); g.stroke();
+      }
+    }
+  }
+  /* rivers */
+  g.strokeStyle = C.water; g.lineWidth = Math.max(0.5, 0.5 + (z - 6) * 0.22); g.lineCap = 'round';
+  for (k = 0; k < GEO.rivers.length; k++) {
+    ring = GEO.rivers[k];
+    g.beginPath();
+    for (j = 0; j < ring.length; j += 2) {
+      p = P(ring[j], ring[j+1]);
+      if (j === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]);
+    }
+    g.stroke();
+  }
+  /* routes */
+  if (z > 6.6) {
+    var RT = window.OW_ROUTES, wgt = Math.max(0.4, (z - 6) * 0.26);
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    for (i = 0; i < RT.length; i++) {
+      var pts = RT[i][1];
+      g.strokeStyle = 'rgba(122,91,58,.30)'; g.lineWidth = wgt + 0.7;
+      g.beginPath();
+      for (j = 0; j < pts.length; j++) { p = P(pts[j][1], pts[j][0]); if (j === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]); }
+      g.stroke();
+      g.strokeStyle = 'rgba(255,248,240,.72)'; g.lineWidth = wgt;
+      g.beginPath();
+      for (j = 0; j < pts.length; j++) { p = P(pts[j][1], pts[j][0]); if (j === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]); }
+      g.stroke();
+    }
+  }
+  /* Ground we have stood on comes alive — the muted states turn the same green as
+     home inside a cleared region, then everything ours takes a warm gold cast. */
+  var rs2 = allRegions();
+  for (var ri = 0; ri < rs2.length; ri++) {
+    var rp = proj(rs2[ri].lat, rs2[ri].lng), rr2 = kmToPx(rs2[ri].r) / s;
+    if (rr2 < 1) continue;
+    var rcx = rp.x / s, rcy = rp.y / s;
+    if (rcx < -rr2 - 30 || rcy < -rr2 - 30 || rcx > bw + rr2 + 30 || rcy > bh + rr2 + 30) continue;
+
+    g.save();
+    blobPath(g, rcx, rcy, rr2, blobFor(rs2[ri].id));
+    g.clip();
+    for (i = 0; i < GEO.states.length; i++) {
+      st = GEO.states[i];
+      if (st.core) continue;
+      g.fillStyle = C.land;
+      for (k = 0; k < st.rings.length; k++) {
+        ring = st.rings[k];
+        g.beginPath();
+        for (j = 0; j < ring.length; j += 2) {
+          p = P(ring[j], ring[j+1]);
+          if (j === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]);
+        }
+        g.closePath(); g.fill();
+      }
+      if (z > 6.2) {
+        g.strokeStyle = 'rgba(94,141,99,.55)'; g.lineWidth = 0.4;
+        for (k = 0; k < st.rings.length; k++) {
+          ring = st.rings[k];
+          g.beginPath();
+          for (j = 0; j < ring.length; j += 2) {
+            p = P(ring[j], ring[j+1]);
+            if (j === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]);
+          }
+          g.closePath(); g.stroke();
+        }
+      }
+    }
+    g.restore();
+
+    var wg = g.createRadialGradient(rcx, rcy, 0, rcx, rcy, rr2);
+    wg.addColorStop(0, 'rgba(245,216,142,.30)');
+    wg.addColorStop(0.62, 'rgba(231,183,101,.20)');
+    wg.addColorStop(1, 'rgba(231,183,101,0)');
+    g.fillStyle = wg; g.beginPath(); g.arc(rcx, rcy, rr2, 0, 7); g.fill();
+  }
+  baseDirty = false;
+}
+
+/* ============================== fog layer ============================== */
+var cloudPhase = 0;
+var CLOUD_SHAPES = [
+  [[0,1,6,2],[1,0,4,1],[2,2,3,1]],
+  [[0,1,8,2],[2,0,5,1],[1,3,4,1]],
+  [[0,0,5,2],[3,1,5,2],[1,2,4,1]],
+  [[0,1,4,2],[1,0,3,1],[0,3,3,1]],
+  [[0,1,9,2],[1,0,3,1],[5,0,3,1],[3,3,4,1]]
+];
+function drawFog() {
+  var g = fogCtx, s = FOGPIXEL, bw = fogCv.width, bh = fogCv.height;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalCompositeOperation = 'source-over';
+  g.clearRect(0, 0, bw, bh);
+
+  g.fillStyle = '#D5CFDE'; g.fillRect(0, 0, bw, bh);
+
+  /* Clouds live over the ground, not over the screen: each one belongs to a
+     patch of the world, so panning moves the map underneath them and every
+     area keeps its own sky. They drift west to east, real-life slow. */
+  var i;
+  var u = 3;                             /* clouds keep one apparent size */
+  /* Patches sit further apart the further out you are, so the sky stays
+     readable instead of turning into static. Fixed ladder, so they only
+     re-form at a couple of zoom boundaries rather than on every notch. */
+  var wantDeg = 105 * kmPerPx(S.center.lat, S.zoom) / (111 * Math.cos(rad(S.center.lat)));
+  var LADDER = [0.04, 0.08, 0.16, 0.32, 0.64, 1.28, 2.56, 5.12];
+  var CELL = LADDER[LADDER.length - 1];
+  for (var li = 0; li < LADDER.length; li++) { if (LADDER[li] >= wantDeg) { CELL = LADDER[li]; break; } }
+  var DRIFT = cloudPhase * 0.00042;      /* degrees of longitude, very gently */
+
+  var tl = unproj(0, 0), br = unproj(W, H);
+  var latHi = Math.max(tl.lat, br.lat) + CELL * 2, latLo = Math.min(tl.lat, br.lat) - CELL * 2;
+  var lngLo = Math.min(tl.lng, br.lng) - CELL * 3, lngHi = Math.max(tl.lng, br.lng) + CELL * 3;
+
+  function hash2(a, b) {
+    var h = (a * 374761393 + b * 668265263) >>> 0;
+    h = (h ^ (h >>> 13)) >>> 0;
+    h = Math.imul(h, 1274126177) >>> 0;
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+  var cols = ['rgba(200,194,214,.90)', 'rgba(238,228,240,.95)', 'rgba(255,253,255,.98)'];
+
+  var gy0 = Math.floor(latLo / CELL), gy1 = Math.ceil(latHi / CELL);
+  var gx0 = Math.floor(lngLo / CELL), gx1 = Math.ceil(lngHi / CELL);
+  if ((gy1 - gy0) * (gx1 - gx0) < 4000) {
+    for (var gy = gy0; gy <= gy1; gy++) {
+      for (var gx = gx0; gx <= gx1; gx++) {
+        var h0 = hash2(gx, gy);
+        if (h0 < 0.34) continue;                   /* gaps, so skies differ by place */
+        var h1 = hash2(gx + 7919, gy), h2 = hash2(gx, gy + 104729), h3 = hash2(gx + 31, gy + 17);
+        var layer = h3 < 0.34 ? 0 : (h3 < 0.7 ? 1 : 2);
+        var clat = (gy + 0.5 + (h1 - 0.5) * 0.7) * CELL;
+        var clng = (gx + 0.5 + (h2 - 0.5) * 0.7) * CELL + DRIFT * (0.55 + layer * 0.3);
+        var cp = proj(clat, clng);
+        var cx = cp.x / s, cy = cp.y / s;
+        var shape = CLOUD_SHAPES[Math.floor(h1 * CLOUD_SHAPES.length) % CLOUD_SHAPES.length];
+        var uu = Math.max(2, Math.round(u * (0.7 + h2 * 0.75)));
+        if (cx < -uu * 12 || cy < -uu * 6 || cx > bw + uu * 12 || cy > bh + uu * 6) continue;
+        g.fillStyle = cols[layer];
+        for (var q = 0; q < shape.length; q++) {
+          g.fillRect(Math.round(cx + shape[q][0] * uu), Math.round(cy + shape[q][1] * uu),
+                     shape[q][2] * uu, shape[q][3] * uu);
+        }
+      }
+    }
+  }
+
+  /* punch out everywhere we've been */
+  g.globalCompositeOperation = 'destination-out';
+  if (canFilter) g.filter = 'blur(' + Math.max(2, 10 / s) + 'px)';
+  var rs = allRegions();
+  for (i = 0; i < rs.length; i++) {
+    var reg = rs[i], pt = proj(reg.lat, reg.lng), r = kmToPx(reg.r) / s;
+    if (r < 0.4) continue;
+    var cx = pt.x / s, cy = pt.y / s;
+    if (cx < -r - 20 || cy < -r - 20 || cx > bw + r + 20 || cy > bh + r + 20) continue;
+    if (canFilter) {
+      g.fillStyle = '#000';
+      blobPath(g, cx, cy, r, blobFor(reg.id));
+      g.fill();
+    } else {
+      var gg = g.createRadialGradient(cx, cy, r * 0.72, cx, cy, r);
+      gg.addColorStop(0, 'rgba(0,0,0,1)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gg; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+    }
+  }
+  if (canFilter) g.filter = 'none';
+  g.globalCompositeOperation = 'source-over';
+}
+
+/* ============================== globe ============================== */
+function drawGlobe() {
+  var g = baseCtx, bw = baseCv.width, bh = baseCv.height, s = PIXEL;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  var sc = S.globe.scale;
+  /* One continuous sky: daylight pink close in, deep space far out, with no
+     step anywhere between. */
+  var skyMix = Math.max(0, Math.min(1, (1.30 - sc) / 0.88));
+  skyMix = skyMix * skyMix * (3 - 2 * skyMix);              /* smoothstep */
+  var NEAR = [255, 242, 248], FAR = [31, 29, 57];
+  function mixc(k) {
+    return 'rgb(' + Math.round(NEAR[0] + (FAR[0] - NEAR[0]) * k) + ',' +
+                    Math.round(NEAR[1] + (FAR[1] - NEAR[1]) * k) + ',' +
+                    Math.round(NEAR[2] + (FAR[2] - NEAR[2]) * k) + ')';
+  }
+  /* a gentle vertical fall-off so the sky is never a flat slab */
+  var skyG = g.createLinearGradient(0, 0, 0, bh);
+  skyG.addColorStop(0, mixc(Math.min(1, skyMix * 1.08)));
+  skyG.addColorStop(1, mixc(Math.max(0, skyMix * 0.88)));
+  g.fillStyle = skyG; g.fillRect(0, 0, bw, bh);
+
+  if (skyMix > 0.01) {
+    for (var i = 0; i < 180; i++) {
+      var a = i * 2.399963;
+      var sx = (Math.sin(a * 3.1) * 0.5 + 0.5) * bw, sy = (Math.cos(a * 2.3) * 0.5 + 0.5) * bh;
+      var tw = 0.35 + (i % 5) / 9;
+      g.fillStyle = i % 9 === 0
+        ? 'rgba(245,216,142,' + (skyMix * 0.9) + ')'
+        : 'rgba(255,255,255,' + (skyMix * tw) + ')';
+      g.fillRect(Math.round(sx), Math.round(sy), 1, 1);
+    }
+  }
+
+  var Rp = Math.min(bw, bh) * 0.40 * sc;
+  var cx = bw / 2, cy = bh / 2;
+  var l0 = rad(S.globe.lon), p0 = rad(S.globe.lat);
+  var sinp0 = Math.sin(p0), cosp0 = Math.cos(p0);
+
+  function pt(lng, lat) {
+    var dl = rad(lng) - l0, ph = rad(lat);
+    var cosc = sinp0 * Math.sin(ph) + cosp0 * Math.cos(ph) * Math.cos(dl);
+    if (cosc < 0) return null;
+    return [ cx + Rp * Math.cos(ph) * Math.sin(dl),
+             cy - Rp * (cosp0 * Math.sin(ph) - sinp0 * Math.cos(ph) * Math.cos(dl)) ];
+  }
+
+  /* ocean */
+  var og = g.createRadialGradient(cx - Rp * 0.3, cy - Rp * 0.35, Rp * 0.1, cx, cy, Rp);
+  og.addColorStop(0, C.waterlite); og.addColorStop(0.75, C.water); og.addColorStop(1, '#3F8F9E');
+  g.fillStyle = og; g.beginPath(); g.arc(cx, cy, Rp, 0, 7); g.fill();
+
+  /* land — draw each visible run of a ring */
+  g.save(); g.beginPath(); g.arc(cx, cy, Rp, 0, 7); g.clip();
+  g.fillStyle = C.landmuted;
+  for (var k = 0; k < GEO.world.length; k++) {
+    var ring = GEO.world[k], run = [];
+    for (var j = 0; j < ring.length; j += 2) {
+      var q = pt(ring[j], ring[j+1]);
+      if (q) run.push(q);
+      else if (run.length > 2) { fillRun(run); run = []; }
+      else run = [];
+    }
+    if (run.length > 2) fillRun(run);
+  }
+  function fillRun(run) {
+    g.beginPath(); g.moveTo(run[0][0], run[0][1]);
+    for (var m = 1; m < run.length; m++) g.lineTo(run[m][0], run[m][1]);
+    g.closePath(); g.fill();
+  }
+
+  /* the part of the world that is ours */
+  var rs = allRegions();
+  for (var i2 = 0; i2 < rs.length; i2++) {
+    var hp = pt(rs[i2].lng, rs[i2].lat);
+    if (!hp) continue;
+    var gr2 = g.createRadialGradient(hp[0], hp[1], 0, hp[0], hp[1], Math.max(4, Rp * 0.10));
+    gr2.addColorStop(0, 'rgba(243,169,199,.95)');
+    gr2.addColorStop(0.5, 'rgba(231,183,101,.55)');
+    gr2.addColorStop(1, 'rgba(231,183,101,0)');
+    g.fillStyle = gr2; g.beginPath(); g.arc(hp[0], hp[1], Math.max(4, Rp * 0.10), 0, 7); g.fill();
+  }
+
+  /* cloud band */
+  for (var c = 0; c < 26; c++) {
+    var ang = c * 2.399963;
+    var clng = ((ang * 57.3 + cloudPhase * 0.35) % 360) - 180;
+    var clat = (Math.sin(ang * 1.9) * 62);
+    var cp = pt(clng, clat);
+    if (!cp) continue;
+    var crad = Rp * (0.06 + (c % 5) * 0.022);
+    var cg = g.createRadialGradient(cp[0], cp[1], 0, cp[0], cp[1], crad);
+    cg.addColorStop(0, 'rgba(255,255,255,.55)'); cg.addColorStop(1, 'rgba(226,221,231,0)');
+    g.fillStyle = cg; g.beginPath(); g.arc(cp[0], cp[1], crad, 0, 7); g.fill();
+  }
+
+  /* shading + terminator */
+  var sg = g.createRadialGradient(cx - Rp * 0.35, cy - Rp * 0.4, Rp * 0.15, cx, cy, Rp * 1.05);
+  sg.addColorStop(0, 'rgba(255,255,255,.24)'); sg.addColorStop(0.55, 'rgba(255,255,255,0)');
+  sg.addColorStop(1, 'rgba(31,29,57,.42)');
+  g.fillStyle = sg; g.beginPath(); g.arc(cx, cy, Rp, 0, 7); g.fill();
+  g.restore();
+
+  /* atmosphere: a soft shell that carries the globe into the sky */
+  var atm = g.createRadialGradient(cx, cy, Rp * 0.94, cx, cy, Rp * 1.20);
+  atm.addColorStop(0, 'rgba(165,225,229,' + (0.34 + skyMix * 0.22) + ')');
+  atm.addColorStop(0.45, 'rgba(180,200,235,' + (0.16 + skyMix * 0.14) + ')');
+  atm.addColorStop(1, 'rgba(180,200,235,0)');
+  g.fillStyle = atm; g.beginPath(); g.arc(cx, cy, Rp * 1.20, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(243,169,199,' + (0.55 + skyMix * 0.3) + ')'; g.lineWidth = 1;
+  g.beginPath(); g.arc(cx, cy, Rp, 0, 7); g.stroke();
+  baseDirty = false;
+}
+
+/* ============================== overlays ============================== */
+function labelBox(x, y, text, opts) {
+  opts = opts || {};
+  ctx.font = (opts.size || 12) + 'px "Pixelify Sans", monospace';
+  var w = ctx.measureText(text).width, padx = 5, pady = 3;
+  var bx = Math.round(x - w / 2 - padx), by = Math.round(y - (opts.size || 12) - pady * 2);
+  ctx.fillStyle = opts.bg || 'rgba(255,251,253,.88)';
+  ctx.fillRect(bx, by, Math.round(w + padx * 2), Math.round((opts.size || 12) + pady * 2));
+  if (opts.border) { ctx.strokeStyle = opts.border; ctx.lineWidth = 2; ctx.strokeRect(bx + 1, by + 1, Math.round(w + padx * 2) - 2, Math.round((opts.size || 12) + pady * 2) - 2); }
+  ctx.fillStyle = opts.fg || C.deep;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(text, Math.round(x), by + (opts.size || 12) + pady - 2);
+  return { x: bx, y: by, w: w + padx * 2, h: (opts.size || 12) + pady * 2 };
+}
+
+var hitboxes = [];
+function addHit(box, item) { if (box) hitboxes.push({ b: box, item: item }); }
+
+var labelBoxes = [];
+function labelFree(b) {
+  for (var i = 0; i < labelBoxes.length; i++) {
+    var o = labelBoxes[i];
+    if (b.x < o.x + o.w + 3 && b.x + b.w + 3 > o.x && b.y < o.y + o.h + 2 && b.y + b.h + 2 > o.y) return false;
+  }
+  return true;
+}
+/* Draw a label only if nothing already sits there. Returns false when skipped. */
+function tryLabel(x, y, text, opts) {
+  opts = opts || {};
+  var size = opts.size || 12;
+  ctx.font = size + 'px "Pixelify Sans", monospace';
+  var w = ctx.measureText(text).width + 10, h = size + 6;
+  var b = { x: Math.round(x - w / 2), y: Math.round(y - h), w: Math.round(w), h: h };
+  if (!opts.force && !labelFree(b)) return false;
+  labelBoxes.push(b);
+  labelBox(x, y, text, opts);
+  return true;
+}
+
+function drawMapOverlays() {
+  hitboxes = [];
+  labelBoxes = [];
+  var z = S.zoom, i, p;
+
+  /* gold discovery borders */
+  var rs = allRegions();
+  for (i = 0; i < rs.length; i++) {
+    var reg = rs[i]; p = proj(reg.lat, reg.lng);
+    var r = kmToPx(reg.r);
+    if (r < 6) continue;
+    ctx.save();
+    blobPath(ctx, p.x, p.y, r, blobFor(reg.id));
+    ctx.strokeStyle = 'rgba(231,183,101,.80)'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.strokeStyle = 'rgba(245,216,142,.45)'; ctx.lineWidth = 9; ctx.stroke();
+    ctx.restore();
+    /* a few slow twinkles riding the border */
+    if (!reduceMotion) {
+      var radii = blobFor(reg.id);
+      for (var sp = 0; sp < 5; sp++) {
+        var ang = (sp / 5) * Math.PI * 2 + cloudPhase / 260 + i;
+        var idx = Math.floor(((ang / (Math.PI * 2)) % 1 + 1) % 1 * radii.length);
+        var rr3 = r * radii[idx];
+        var tw = Math.sin(cloudPhase / 14 + sp * 1.7 + i) * 0.5 + 0.5;
+        if (tw < 0.45) continue;
+        var sx = p.x + Math.cos(ang) * rr3, sy = p.y + Math.sin(ang) * rr3;
+        var sz = 2 + Math.round(tw * 2);
+        ctx.fillStyle = 'rgba(255,245,214,' + (tw * 0.95) + ')';
+        ctx.fillRect(sx - sz / 2, sy - 1, sz, 2);
+        ctx.fillRect(sx - 1, sy - sz / 2, 2, sz);
+      }
+    }
+  }
+
+  /* reserve the ground under each landmark first, so no town label lands on it */
+  for (i = 0; i < LANDMARKS.length; i++) {
+    var rl = LANDMARKS[i];
+    if (!rl[8] && !isRevealed(rl[2], rl[3], 1.06)) continue;
+    var rp2 = proj(rl[2], rl[3]);
+    var rsc = Math.max(2, Math.round((z > 11.4 ? 4 : (z > 10.4 ? 3 : 2)) * (rl[6] || 1)));
+    var gr = SP[rl[4]], gw = gr[0].length * rsc, gh = gr.length * rsc;
+    labelBoxes.push({ x: rp2.x - gw / 2 - 4, y: rp2.y - gh - 4, w: gw + 8, h: gh + 8 });
+  }
+
+  ['bruce', 'elena'].forEach(function (hk) {
+    var hh = HOMES[hk], hq = proj(hh.lat, hh.lng);
+    var hsc = z > 10.6 ? 4 : (z > 9 ? 3 : 2);
+    var hg = hk === 'elena' ? SP.castle : SP.cottage;
+    var hw = hg[0].length * hsc, hh2 = hg.length * hsc;
+    labelBoxes.push({ x: hq.x - hw / 2 - 5, y: hq.y - hh2 - 5, w: hw + 10, h: hh2 + 12 });
+  });
+
+  /* state names — how you find your way around when zoomed out */
+  if (z < 8.8) {
+    var SL = window.OW_STATES_LBL, fade = Math.max(0.28, Math.min(0.72, (8.8 - z) / 2.2));
+    ctx.font = '700 ' + (z < 6.4 ? 13 : 15) + 'px "Pixelify Sans", monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (i = 0; i < SL.length; i++) {
+      p = proj(SL[i][1], SL[i][2]);
+      if (p.x < -80 || p.y < -20 || p.x > W + 80 || p.y > H + 20) continue;
+      ctx.save();
+      ctx.letterSpacing = '2px';
+      ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.miterLimit = 2;
+      ctx.strokeStyle = 'rgba(255,248,251,' + (fade + 0.2) + ')';
+      ctx.strokeText(SL[i][0], p.x, p.y);
+      ctx.fillStyle = 'rgba(94,141,99,' + fade + ')';
+      ctx.fillText(SL[i][0], p.x, p.y);
+      ctx.restore();
+    }
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  /* counties and city areas — the labels you see most of the time */
+  var A = window.OW_AREAS;
+  for (i = 0; i < A.length; i++) {
+    if (!isRevealed(A[i][1], A[i][2], 1.25)) continue;
+    p = proj(A[i][1], A[i][2]);
+    if (p.x < -90 || p.y < -30 || p.x > W + 90 || p.y > H + 30) continue;
+    tryLabel(p.x, p.y, A[i][0], { size: 13, fg: C.deep, bg: 'rgba(255,251,253,.82)' });
+  }
+
+  /* towns and landmarks — only once you are right on top of them */
+  if (z > 11.2) {
+    var T = window.OW_TOWNS;
+    for (i = 0; i < T.length; i++) {
+      var t = T[i];
+      if (!isRevealed(t[1], t[2])) continue;
+      p = proj(t[1], t[2]);
+      if (p.x < -60 || p.y < -30 || p.x > W + 60 || p.y > H + 30) continue;
+      ctx.fillStyle = 'rgba(61,40,56,.55)';
+      ctx.fillRect(Math.round(p.x) - 2, Math.round(p.y) - 2, 4, 4);
+      tryLabel(p.x, p.y - 3, t[0], { size: 11, fg: 'rgba(61,40,56,.74)' });
+    }
+  }
+
+  /* parks */
+  if (z > 9.2) {
+    for (i = 0; i < PARKS.length; i++) {
+      if (!isRevealed(PARKS[i][1], PARKS[i][2])) continue;
+      p = proj(PARKS[i][1], PARKS[i][2]);
+      if (p.x < -20 || p.y < -20 || p.x > W + 20 || p.y > H + 20) continue;
+      drawSprite(ctx, SP.tree, PAL.tree, p.x, p.y + 3, 2);
+    }
+  }
+
+  /* the flight out — a dashed hop from home to Chicago and up the shore to Milwaukee,
+     with a small plane drifting along it. Nothing here is cleared ground; it is just the plan. */
+  (function drawFlight() {
+    var fp = [], fi;
+    for (fi = 0; fi < FLIGHT.length; fi++) fp.push(proj(FLIGHT[fi][0], FLIGHT[fi][1]));
+    /* one control point per leg, bowed north so the hop arcs instead of ruling a line */
+    var ctrl = [], segLen = [], total = 0;
+    for (fi = 0; fi < fp.length - 1; fi++) {
+      var a = fp[fi], b = fp[fi + 1];
+      var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
+      ctrl.push({ x: (a.x + b.x) / 2 + (dy / len) * len * 0.13,
+                  y: (a.y + b.y) / 2 - (dx / len) * len * 0.13 });
+      segLen.push(len); total += len;
+    }
+    if (!total) return;
+
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    var dashOff = reduceMotion ? 0 : -(cloudPhase * 0.9) % 22;
+    for (fi = 0; fi < fp.length - 1; fi++) {
+      ctx.beginPath();
+      ctx.moveTo(fp[fi].x, fp[fi].y);
+      ctx.quadraticCurveTo(ctrl[fi].x, ctrl[fi].y, fp[fi + 1].x, fp[fi + 1].y);
+      ctx.setLineDash([]); ctx.strokeStyle = 'rgba(255,251,253,.75)'; ctx.lineWidth = 7;
+      ctx.stroke();
+      ctx.setLineDash([11, 11]); ctx.lineDashOffset = dashOff;
+      ctx.strokeStyle = 'rgba(231,183,101,.95)'; ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    ctx.restore();
+
+    /* where the plane has got to — one slow pass, about two and a half minutes end to end */
+    var ft = ((cloudPhase % 1600) / 1600) * total, seg = 0;
+    while (seg < segLen.length - 1 && ft > segLen[seg]) { ft -= segLen[seg]; seg++; }
+    var u = Math.max(0, Math.min(1, ft / (segLen[seg] || 1))), iu = 1 - u;
+    var px2 = iu * iu * fp[seg].x + 2 * iu * u * ctrl[seg].x + u * u * fp[seg + 1].x;
+    var py2 = iu * iu * fp[seg].y + 2 * iu * u * ctrl[seg].y + u * u * fp[seg + 1].y;
+    if (px2 < -60 || py2 < -60 || px2 > W + 60 || py2 > H + 60) return;
+
+    var psc = z > 5.0 ? 3 : 2, ph = SP.plane.length * psc;
+    var lift = reduceMotion ? 0 : Math.round(Math.sin(cloudPhase / 19) * psc);
+    var pg = ctx.createRadialGradient(px2, py2, 0, px2, py2, ph * 1.1);
+    pg.addColorStop(0, 'rgba(255,255,255,.75)');
+    pg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = pg;
+    ctx.beginPath(); ctx.arc(px2, py2, ph * 1.1, 0, 7); ctx.fill();
+    var pbox = drawSprite(ctx, SP.plane, PAL.plane, px2, py2 + ph / 2 + lift, psc, '#6E2549');
+    labelBoxes.push({ x: pbox.x - 4, y: pbox.y - 4, w: pbox.w + 8, h: pbox.h + 8 });
+  })();
+
+  /* landmarks */
+  for (i = 0; i < LANDMARKS.length; i++) {
+    var lm = LANDMARKS[i];
+    /* A planned stop is drawn before we get there. The moment the ground around it
+       is actually cleared it stops being planned and behaves like everywhere else. */
+    var planned = lm[8] && !isRevealed(lm[2], lm[3], 1.06);
+    if (!planned && !isRevealed(lm[2], lm[3], 1.06)) continue;
+    p = proj(lm[2], lm[3]);
+    if (p.x < -50 || p.y < -60 || p.x > W + 50 || p.y > H + 30) continue;
+    var lsc = Math.max(2, Math.round((z > 11.4 ? 4 : (z > 10.4 ? 3 : 2)) * (lm[6] || 1)));
+    var gh2 = SP[lm[4]].length * lsc;
+    if (planned) {
+      /* still ahead of us: a dashed ring on the ground and the icon held back a little */
+      var pw = SP[lm[4]][0].length * lsc, prr = Math.max(pw * 0.62, 16);
+      var spin = reduceMotion ? 0 : cloudPhase / 120;
+      ctx.save();
+      ctx.translate(p.x, p.y - 2); ctx.rotate(spin);
+      ctx.setLineDash([Math.max(3, lsc * 1.6), Math.max(3, lsc * 1.6)]);
+      ctx.strokeStyle = 'rgba(231,183,101,.85)'; ctx.lineWidth = Math.max(2, lsc * 0.8);
+      ctx.beginPath(); ctx.ellipse(0, 0, prr, prr * 0.42, 0, 0, 7); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      var hov = reduceMotion ? 0 : Math.round(Math.sin(cloudPhase / 26 + i) * lsc * 0.7);
+      var pglow = ctx.createRadialGradient(p.x, p.y - gh2 * 0.5, 0, p.x, p.y - gh2 * 0.5, gh2 * 1.15);
+      pglow.addColorStop(0, 'rgba(255,246,216,.55)');
+      pglow.addColorStop(1, 'rgba(255,246,216,0)');
+      ctx.fillStyle = pglow;
+      ctx.beginPath(); ctx.arc(p.x, p.y - gh2 * 0.5, gh2 * 1.15, 0, 7); ctx.fill();
+      ctx.save();
+      ctx.globalAlpha = 0.72;
+      var pb = drawSprite(ctx, SP[lm[4]], PAL[lm[4]], p.x, p.y - 4 + hov, lsc, '#FFFFFF');
+      ctx.restore();
+      if (z > 5.4) tryLabel(p.x, pb.y - 2, lm[1] + ' \u00b7 soon', { size: 12, fg: C.deep, border: C.gold, force: 1 });
+      labelBoxes.push({ x: pb.x - 4, y: pb.y - 4, w: pb.w + 8, h: pb.h + 8 });
+      addHit({ x: pb.x - 8, y: pb.y - 20, w: pb.w + 16, h: pb.h + 26 }, { kind: 'landmark', id: lm[0] });
+      continue;
+    }
+    if (lm[7]) {
+      /* it glows, and more lanterns keep going up */
+      var pulse = reduceMotion ? 0.6 : (Math.sin(cloudPhase / 17 + i) * 0.5 + 0.5);
+      var gcy = p.y - gh2 * 0.55, grad2 = ctx.createRadialGradient(p.x, gcy, 0, p.x, gcy, gh2 * 1.6);
+      grad2.addColorStop(0, 'rgba(255,238,190,' + (0.50 + pulse * 0.28) + ')');
+      grad2.addColorStop(0.42, 'rgba(255,190,96,' + (0.24 + pulse * 0.16) + ')');
+      grad2.addColorStop(1, 'rgba(255,186,96,0)');
+      ctx.fillStyle = grad2;
+      ctx.beginPath(); ctx.arc(p.x, gcy, gh2 * 1.6, 0, 7); ctx.fill();
+      if (!reduceMotion) {
+        for (var ln = 0; ln < 7; ln++) {
+          var rise = ((cloudPhase / 9 + ln * 21) % 150) / 150;
+          var lx = p.x + Math.sin(ln * 2.3 + rise * 2.2) * (gh2 * 0.75) + (ln - 3) * lsc * 3;
+          var ly = p.y - gh2 * 0.4 - rise * gh2 * 2.4;
+          var lz = Math.max(1, Math.round(lsc * (0.9 - rise * 0.35)));
+          var fade = Math.sin(rise * Math.PI);
+          ctx.fillStyle = 'rgba(255,205,120,' + (fade * 0.85) + ')';
+          ctx.fillRect(Math.round(lx), Math.round(ly), lz * 2, lz * 3);
+          ctx.fillStyle = 'rgba(255,246,216,' + (fade * 0.9) + ')';
+          ctx.fillRect(Math.round(lx), Math.round(ly + lz), lz * 2, lz);
+        }
+      }
+    } else if (!reduceMotion) {
+      var shim = (Math.sin(cloudPhase / 13 + i) * 0.5 + 0.5);
+      ctx.fillStyle = 'rgba(165,225,229,' + (0.16 + shim * 0.16) + ')';
+      ctx.beginPath(); ctx.arc(p.x, p.y - 8 * lsc, 11 * lsc, 0, 7); ctx.fill();
+    }
+    var lb = drawSprite(ctx, SP[lm[4]], PAL[lm[4]], p.x, p.y, lsc, lm[7] ? null : '#FFFFFF');
+    if (z > 9.6) tryLabel(p.x, lb.y - 2, lm[1], { size: 12, fg: C.deep, border: C.gold, force: 1 });
+    labelBoxes.push({ x: lb.x - 4, y: lb.y - 4, w: lb.w + 8, h: lb.h + 8 });
+    addHit({ x: lb.x - 8, y: lb.y - 20, w: lb.w + 16, h: lb.h + 26 }, { kind: 'landmark', id: lm[0] });
+  }
+
+  /* homes */
+  ['bruce', 'elena'].forEach(function (k) {
+    var h = HOMES[k]; var q = proj(h.lat, h.lng);
+    if (q.x < -60 || q.y < -70 || q.x > W + 60 || q.y > H + 40) return;
+    var sc = z > 10.6 ? 4 : (z > 9 ? 3 : 2);
+    var bob = reduceMotion ? 0 : Math.round(Math.sin(cloudPhase / 22 + (k === 'elena' ? 1.6 : 0)) * 1.2);
+    var box = k === 'elena'
+      ? drawSprite(ctx, SP.castle, PAL.castle, q.x, q.y + bob, sc, '#FFFFFF')
+      : drawSprite(ctx, SP.cottage, PAL.gold, q.x, q.y + bob, sc, '#FFFFFF');
+    if (!reduceMotion && z > 9.4) {
+      /* chimney smoke for his cottage, a wisp of magic over her towers */
+      var smx = k === 'bruce' ? box.x + box.w * 0.26 : box.x + box.w * 0.5;
+      for (var pf = 0; pf < 4; pf++) {
+        var life = ((cloudPhase / 3 + pf * 13) % 52) / 52;
+        var py2 = box.y + bob - life * 26 * (sc / 3);
+        var px2 = smx + Math.sin(life * 5 + pf) * 5;
+        var psz = Math.max(2, Math.round((1 + life * 2.2) * (sc / 3)));
+        ctx.fillStyle = k === 'bruce'
+          ? 'rgba(255,251,253,' + (0.62 * (1 - life)) + ')'
+          : 'rgba(245,216,142,' + (0.66 * (1 - life)) + ')';
+        ctx.fillRect(Math.round(px2), Math.round(py2), psz, psz);
+      }
+    }
+    addHit({ x: box.x - 6, y: box.y - 10, w: box.w + 12, h: box.h + 12 }, { kind: 'home', who: k });
+  });
+
+  /* memories */
+  for (i = 0; i < S.memories.length; i++) {
+    var m = S.memories[i];
+    if (!isRevealed(m.lat, m.lng, 1.06)) continue;
+    p = proj(m.lat, m.lng);
+    if (p.x < -40 || p.y < -50 || p.x > W + 40 || p.y > H + 30) continue;
+    var b = drawSprite(ctx, SP.heart, PAL.heartP, p.x, p.y, z > 9 ? 3 : 2, '#FFFFFF');
+    addHit({ x: b.x - 7, y: b.y - 7, w: b.w + 14, h: b.h + 14 }, { kind: 'memory', id: m.id });
+  }
+
+  /* starter suggestions (local only, until someone writes one) */
+  if (z > 8.6) {
+    for (i = 0; i < STARTERS.length; i++) {
+      var st = STARTERS[i];
+      if (S.starterUsed[st[0]]) continue;
+      if (!isRevealed(st[2], st[3], 1.06)) continue;
+      var taken = false;
+      for (var mi = 0; mi < S.memories.length; mi++) {
+        if (haversine(st[2], st[3], S.memories[mi].lat, S.memories[mi].lng) < 25) { taken = true; break; }
+      }
+      if (taken) continue;
+      /* and never sit on top of a home */
+      if (haversine(st[2], st[3], HOMES.bruce.lat, HOMES.bruce.lng) < 2.5) continue;
+      if (haversine(st[2], st[3], HOMES.elena.lat, HOMES.elena.lng) < 2.5) continue;
+      p = proj(st[2], st[3]);
+      if (p.x < -40 || p.y < -50 || p.x > W + 40 || p.y > H + 30) continue;
+      ctx.globalAlpha = 0.62;
+      var sb = drawSprite(ctx, SP.heart, PAL.heartG, p.x, p.y, 2, '#FFFFFF');
+      ctx.globalAlpha = 1;
+      ctx.save();
+      ctx.setLineDash([3, 3]); ctx.strokeStyle = 'rgba(159,61,109,.5)'; ctx.lineWidth = 2;
+      ctx.strokeRect(sb.x - 4, sb.y - 4, sb.w + 8, sb.h + 8);
+      ctx.restore();
+      addHit({ x: sb.x - 8, y: sb.y - 8, w: sb.w + 16, h: sb.h + 16 }, { kind: 'starter', id: st[0] });
+    }
+  }
+
+  /* surprises */
+  for (i = 0; i < S.surprises.length; i++) {
+    var su = S.surprises[i];
+    if (!isRevealed(su.lat, su.lng, 1.2)) continue;
+    p = proj(su.lat, su.lng);
+    if (p.x < -40 || p.y < -50 || p.x > W + 40 || p.y > H + 30) continue;
+    var eb = drawSprite(ctx, SP.envelope, PAL.env, p.x, p.y, z > 9 ? 3 : 2, '#FFFFFF');
+    if (!su.opened) {
+      var pl = reduceMotion ? 0.5 : (Math.sin(cloudPhase / 11 + i * 2) * 0.5 + 0.5);
+      ctx.strokeStyle = 'rgba(216,90,146,' + (0.35 + pl * 0.45) + ')'; ctx.lineWidth = 2;
+      ctx.strokeRect(eb.x - 4, eb.y - 4, eb.w + 8, eb.h + 8);
+    }
+    addHit({ x: eb.x - 7, y: eb.y - 7, w: eb.w + 14, h: eb.h + 14 }, { kind: 'surprise', id: su.id });
+  }
+
+  /* you */
+  if (S.me) {
+    p = proj(S.me.lat, S.me.lng);
+    var ring = reduceMotion ? 10 : 10 + (Math.sin(cloudPhase / 7) * 0.5 + 0.5) * 9;
+    ctx.strokeStyle = 'rgba(216,90,146,.55)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(p.x, p.y, ring, 0, 7); ctx.stroke();
+    drawSprite(ctx, SP.you, PAL.you, p.x, p.y + 6, 3, '#FFFFFF');
+  }
+}
+
+/* ============================== main draw ============================== */
+function draw() {
+  if (!W) return;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, W, H);
+
+  if (S.mode === 'globe') {
+    drawGlobe();
+    ctx.drawImage(baseCv, 0, 0, baseCv.width, baseCv.height, 0, 0, W, H);
+    ctx.imageSmoothingEnabled = true;
+    return;
+  }
+
+  if (baseDirty) drawBase();
+  ctx.drawImage(baseCv, 0, 0, baseCv.width, baseCv.height, 0, 0, W, H);
+  drawFog();
+  ctx.globalAlpha = S.zoom > 9.4 ? 0.95 : (S.zoom > 7 ? 0.88 : 0.78);
+  ctx.drawImage(fogCv, 0, 0, fogCv.width, fogCv.height, 0, 0, W, H);
+  ctx.globalAlpha = 1;
+  ctx.imageSmoothingEnabled = true;
+  drawMapOverlays();
+}
+
+var lastTick = 0;
+function loop(t) {
+  requestAnimationFrame(loop);
+  if (t - lastTick < (reduceMotion ? 500 : 50)) return;
+  lastTick = t;
+  if (!reduceMotion) cloudPhase += 0.55;
+  draw();
+}
+requestAnimationFrame(loop);
+
+/* ============================== interaction ============================== */
+var drag = null, pinch = null;
+function evPos(e) { var r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+
+cv.addEventListener('pointerdown', function (e) {
+  cv.setPointerCapture(e.pointerId);
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, t: Date.now() };
+  cv.classList.add('dragging');
+});
+cv.addEventListener('pointermove', function (e) {
+  if (!drag || drag.id !== e.pointerId) return;
+  var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 5) drag.moved = true;
+  drag.x = e.clientX; drag.y = e.clientY;
+  if (S.mode === 'globe') {
+    S.globe.lon -= dx * 0.35 / Math.max(0.4, S.globe.scale);
+    S.globe.lat = Math.max(-88, Math.min(88, S.globe.lat + dy * 0.35 / Math.max(0.4, S.globe.scale)));
+  } else {
+    var z = S.zoom;
+    var nx = lngToWX(S.center.lng, z) - dx, ny = latToWY(S.center.lat, z) - dy;
+    S.center.lng = wxToLng(nx, z);
+    S.center.lat = Math.max(24, Math.min(46, wyToLat(ny, z)));
+    baseDirty = true;
+  }
+  draw();
+});
+function endDrag(e) {
+  if (!drag || drag.id !== e.pointerId) return;
+  cv.classList.remove('dragging');
+  var wasTap = !drag.moved && Date.now() - drag.t < 500;
+  drag = null;
+  if (wasTap && S.mode === 'map') handleTap(evPos(e));
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+cv.addEventListener('wheel', function (e) {
+  e.preventDefault();
+  var d = -e.deltaY * (e.deltaMode === 1 ? 0.04 : 0.0022);
+  zoomBy(d, evPos(e));
+}, { passive: false });
+
+/* pinch */
+var pts = {};
+cv.addEventListener('pointerdown', function (e) { pts[e.pointerId] = e; });
+cv.addEventListener('pointermove', function (e) {
+  if (!pts[e.pointerId]) return;
+  pts[e.pointerId] = e;
+  var ids = Object.keys(pts);
+  if (ids.length === 2) {
+    var a = pts[ids[0]], b = pts[ids[1]];
+    var d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    if (pinch) zoomBy((d - pinch) * 0.006, { x: W / 2, y: H / 2 });
+    pinch = d; drag = null;
+  }
+});
+function clearPt(e) { delete pts[e.pointerId]; if (Object.keys(pts).length < 2) pinch = null; }
+cv.addEventListener('pointerup', clearPt);
+cv.addEventListener('pointercancel', clearPt);
+
+function zoomBy(d, at) {
+  if (S.mode === 'globe') {
+    S.globe.scale = Math.max(0.20, Math.min(1.55, S.globe.scale * (1 + d * 0.55)));
+    if (S.globe.scale > 1.50) { enterMap(S.globe.lat, S.globe.lon, 5.2); return; }
+    setViewButtons(S.globe.scale < 0.62 ? 'space' : 'earth');
+    draw(); return;
+  }
+  var before = at ? unproj(at.x, at.y) : null;
+  var nz = Math.max(4.6, Math.min(14.5, S.zoom + d * 3));
+  if (nz <= 4.62 && d < 0) { enterGlobe(); return; }
+  S.zoom = nz;
+  if (before && at) {
+    var after = unproj(at.x, at.y);
+    S.center.lng += before.lng - after.lng;
+    S.center.lat = Math.max(24, Math.min(46, S.center.lat + before.lat - after.lat));
+  }
+  baseDirty = true;
+  setViewButtons(S.zoom >= 9.6 ? 'local' : 'dmv');
+  draw();
+}
+
+function handleTap(pos) {
+  if (S.placing) { placeAt(unproj(pos.x, pos.y)); return; }
+  for (var i = hitboxes.length - 1; i >= 0; i--) {
+    var h = hitboxes[i], b = h.b;
+    if (pos.x >= b.x && pos.x <= b.x + b.w && pos.y >= b.y && pos.y <= b.y + b.h) { openItem(h.item); return; }
+  }
+  closeSheet();
+}
+
+/* ============================== view switching ============================== */
+function setViewButtons(v) {
+  S.view = v;
+  [].forEach.call(document.querySelectorAll('#views .pxbtn'), function (b) {
+    b.setAttribute('aria-pressed', b.dataset.view === v ? 'true' : 'false');
+  });
+  updateWhere();
+}
+function flyTo(lat, lng, z) {
+  S.mode = 'map'; S.center.lat = lat; S.center.lng = lng; S.zoom = z;
+  baseDirty = true; setViewButtons(z >= 9.6 ? 'local' : 'dmv'); draw();
+}
+function enterMap(lat, lng, z) {
+  S.mode = 'map'; S.center.lat = Math.max(24, Math.min(46, lat)); S.center.lng = lng;
+  S.zoom = z; baseDirty = true; setViewButtons(z >= 9.6 ? 'local' : 'dmv'); draw();
+}
+function enterGlobe(scale) {
+  S.mode = 'globe';
+  S.globe.lon = S.center.lng; S.globe.lat = S.center.lat;
+  S.globe.scale = scale || 1.42;          /* arrive big, matching the map you left */
+  setViewButtons(S.globe.scale < 0.62 ? 'space' : 'earth');
+  draw();
+}
+[].forEach.call(document.querySelectorAll('#views .pxbtn'), function (b) {
+  b.addEventListener('click', function () {
+    var v = b.dataset.view;
+    if (v === 'local') { var h = HOMES[S.who] || HOMES.bruce; flyTo(h.lat, h.lng, 11.2); }
+    else if (v === 'dmv') flyTo(38.55, -77.1, 6.9);
+    else if (v === 'earth') enterGlobe(1.05);
+    else enterGlobe(0.34);
+  });
+});
+document.getElementById('zin').addEventListener('click', function () { zoomBy(0.34, { x: W/2, y: H/2 }); });
+document.getElementById('zout').addEventListener('click', function () { zoomBy(-0.34, { x: W/2, y: H/2 }); });
+
+function updateWhere() {
+  var el = document.getElementById('where');
+  if (S.mode === 'globe') { el.textContent = S.globe.scale < 0.62 ? 'Outer space' : 'Earth'; return; }
+  var reg = regionAt(S.center.lat, S.center.lng);
+  if (reg) { el.textContent = reg.name; return; }
+  var nt = nearestTown(S.center.lat, S.center.lng);
+  el.textContent = 'Unexplored — near ' + nt.name;
+}
+
+/* ============================== toasts ============================== */
+function toast(msg, emoji, ms) {
+  var wrap = document.getElementById('toasts');
+  var d = document.createElement('div');
+  d.className = 'toast';
+  d.innerHTML = '<span class="em"></span><span class="tx"></span>';
+  d.querySelector('.em').textContent = emoji || '✨';
+  d.querySelector('.tx').textContent = msg;
+  wrap.appendChild(d);
+  setTimeout(function () { d.style.transition = 'opacity .35s'; d.style.opacity = '0'; setTimeout(function(){ d.remove(); }, 380); }, ms || 3400);
+}
+
+/* ============================== sheet ============================== */
+var sheet = document.getElementById('sheet');
+function openSheet(html) { sheet.innerHTML = html; sheet.classList.add('open'); sheet.scrollTop = 0; }
+function closeSheet() { sheet.classList.remove('open'); S.selected = null; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function head(title, sub) {
+  return '<div class="sheet-head"><div class="grow"><h2>' + esc(title) + '</h2>' +
+    (sub ? '<div class="sheet-sub">' + esc(sub) + '</div>' : '') +
+    '</div><button class="closex" type="button" data-act="close" aria-label="Close">✕</button></div>';
+}
+sheet.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-act]'); if (!b) return;
+  var act = b.dataset.act;
+  if (act === 'close') closeSheet();
+  else if (act === 'save-memory') saveMemory(b);
+  else if (act === 'save-surprise') saveSurprise(b);
+  else if (act === 'open-surprise') openSurprise(b.dataset.id);
+  else if (act === 'edit-memory') editMemory(b.dataset.id);
+  else if (act === 'save-edit') saveMemoryEdit(b);
+  else if (act === 'del-memory') delMemory(b.dataset.id);
+  else if (act === 'del-surprise') delSurprise(b.dataset.id);
+  else if (act === 'mem-at') { memoryForm({ lat: parseFloat(b.dataset.lat), lng: parseFloat(b.dataset.lng) }); }
+  else if (act === 'world-pull') {
+    b.disabled = true; b.textContent = 'Pulling…';
+    loadAll();
+    setTimeout(function () { worldStatus(); toast('Pulled ' + S.memories.length + ' memories and ' + S.regions.length + ' places.', '\u2728', 3600); }, 1400);
+  }
+  else if (act === 'world-test') { worldTest(b); }
+  else if (act === 'diagnose') { runDiagnostic(b); }
+  else if (act === 'use-latlng') {
+    var ll = parseLatLng(document.getElementById('ll-in').value);
+    if (!ll) { toast('That did not look like coordinates. Try 40.9269, -75.2026', '📍', 4600); return; }
+    S.me = ll;
+    closeSheet();
+    flyTo(ll.lat, ll.lng, 11.6);
+    discover(ll.lat, ll.lng);
+    checkNearby();
+  }
+  else if (act === 'discover-center') {
+    closeSheet();
+    discover(S.center.lat, S.center.lng);
+  }
+  else if (act === 'goto') { flyTo(parseFloat(b.dataset.lat), parseFloat(b.dataset.lng), parseFloat(b.dataset.z) || 12.2); closeSheet(); }
+  else if (act === 'switch-who') { localStorage.removeItem('ow.who'); location.reload(); }
+});
+
+/* ============================== db ============================== */
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* A stored photo may be a data URL, a blob path with a leading slash, or just an
+   asset id. Try each shape in turn rather than showing a broken frame. */
+function photoCandidates(m) {
+  var out = [], i;
+  if (m.photoUrl) {
+    out.push(m.photoUrl);
+    if (m.photoUrl.charAt(0) === '/') out.push(m.photoUrl.slice(1));
+    else if (m.photoUrl.indexOf('_blob/') === 0) out.push('/' + m.photoUrl);
+  }
+  if (m.assetId) { out.push('_blob/' + m.assetId); out.push('/_blob/' + m.assetId); }
+  var seen = {}, uniq = [];
+  for (i = 0; i < out.length; i++) if (!seen[out[i]]) { seen[out[i]] = 1; uniq.push(out[i]); }
+  return uniq;
+}
+function photoImg(m, cls) {
+  var c = photoCandidates(m);
+  if (!c.length) return '';
+  return '<img class="' + (cls || 'memphoto') + '" alt="" src="' + esc(c[0]) + '"' +
+    ' data-alts="' + esc(c.slice(1).join('|')) + '"' +
+    ' onerror="window.__owPhotoFallback && window.__owPhotoFallback(this)">';
+}
+window.__owPhotoFallback = function (img) {
+  var alts = (img.getAttribute('data-alts') || '').split('|').filter(Boolean);
+  if (alts.length) {
+    img.setAttribute('data-alts', alts.slice(1).join('|'));
+    img.src = alts[0];
+    return;
+  }
+  var ph = document.createElement('span');
+  ph.className = img.className === 'memphoto' ? 'photo-missing' : 'ph';
+  ph.textContent = img.className === 'memphoto' ? 'Photo saved, but it will not load here' : '\ud83d\udcf7';
+  if (img.parentNode) img.parentNode.replaceChild(ph, img);
+};
+function whoName(k) { return k === 'elena' ? 'Princess Elena' : (k === 'bruce' ? 'Bruce' : 'Someone'); }
+function other(k) { return k === 'elena' ? 'bruce' : 'elena'; }
+
+var DBS = { claude: false, useFn: false, db: false, assets: false, note: '', counts: {}, errs: {}, live: {} };
+function setWorldChip() {
+  var c = document.getElementById('worldchip'), n = document.getElementById('worldnam');
+  if (!c) return;
+  if (DBS.db) { c.classList.add('live'); c.classList.remove('warn'); n.textContent = 'Shared'; }
+  else { c.classList.remove('live'); c.classList.add('warn'); n.textContent = 'This device only'; }
+}
+
+function connect() {
+  DBS.claude = !!window.claude;
+  DBS.useFn = !!(window.claude && typeof window.claude.use === 'function');
+  if (!DBS.useFn) { DBS.note = 'The page is not running inside a Claude viewer, so there is no shared world to reach.'; offline(); setWorldChip(); return; }
+  Promise.all([window.claude.use('db'), window.claude.use('assets').catch(function () { return null; })])
+    .then(function (r) {
+      S.db = r[0]; S.assets = r[1];
+      DBS.db = !!S.db; DBS.assets = !!S.assets;
+      setWorldChip();
+      if (!S.db) {
+        DBS.note = 'The viewer refused the shared database for this view.';
+        offline(); return;
+      }
+      document.getElementById('mechip').classList.add('live');
+      loadAll();
+    })
+    .catch(function (e) {
+      DBS.note = 'Reaching the shared world threw: ' + ((e && (e.code || e.message)) || 'unknown error');
+      offline(); setWorldChip();
+    });
+}
+
+/* Read each collection once up front, THEN subscribe for live updates. A live
+   subscription can fail on its own; a one-shot read still fills the world. */
+function applyDocs(name, docs) {
+  var rows = docs.map(function (d) { var o = d.data() || {}; o.id = d.id; return o; });
+  if (name === 'discoveries') {
+    S.regions = mergeById(rows, S.regions);
+    LS.write('discoveries', S.regions);
+    baseDirty = true; updateWhere(); renderHop();
+  } else if (name === 'memories') {
+    var hid = hiddenSet();
+    S.memories = mergeById(rows, S.memories).filter(function (m) { return !hid[m.id]; });
+    S.memories.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+    LS.write('memories', S.memories);
+    if (calEl && calEl.classList.contains('open')) renderCal();
+  } else if (name === 'deleted') {
+    rows.forEach(function (r) { S.deleted[r.id] = 1; });
+    var hid2 = hiddenSet();
+    S.memories = S.memories.filter(function (m) { return !hid2[m.id]; });
+    LS.write('memories', S.memories);
+    if (calEl && calEl.classList.contains('open')) renderCal();
+  } else if (name === 'surprises') {
+    S.surprises = mergeById(rows, S.surprises);
+    LS.write('surprises', S.surprises);
+  }
+  DBS.counts[name] = rows.length;
+  draw();
+}
+
+function watch(name) {
+  var col;
+  try { col = S.db.collection(name); }
+  catch (e) { DBS.errs[name] = 'path: ' + (e && e.message); return; }
+
+  col.get().then(function (snap) {
+    applyDocs(name, snap.docs);
+    DBS.errs[name] = '';
+  }).catch(function (e) {
+    DBS.errs[name] = 'read: ' + ((e && e.code) || (e && e.message) || 'failed');
+    setWorldChip();
+  });
+
+  try {
+    col.onSnapshot(function (snap) {
+      applyDocs(name, snap.docs);
+      DBS.live[name] = true;
+    }, function (e) {
+      DBS.live[name] = false;
+      DBS.errs[name] = 'live: ' + ((e && e.code) || 'ended');
+    });
+  } catch (e) {
+    DBS.live[name] = false;
+    DBS.errs[name] = 'live: ' + (e && e.message);
+  }
+}
+
+function loadAll() {
+  ['deleted', 'discoveries', 'memories', 'surprises'].forEach(watch);
+}
+
+var warnedOffline = false;
+function offline() {
+  if (warnedOffline) return;
+  warnedOffline = true;
+  setWorldChip();
+  toast(PUBLIC_BUILD
+    ? 'This is the open build — anything you pin stays in this browser.'
+    : 'Saving on this device only — tap the gold chip up top to fix',
+    PUBLIC_BUILD ? '\ud83d\uddfa\ufe0f' : '\u26a0\ufe0f', 6000);
+}
+
+/* ============================== discovery ============================== */
+function discover(lat, lng, quiet) {
+  var existing = regionAt(lat, lng);
+  if (existing) { if (!quiet) toast('Already part of Our World: ' + existing.name, '🗺️'); return false; }
+  var nt = nearestTown(lat, lng);
+  var name = nt.km < 26 ? nt.name : 'Uncharted ground';
+  var rec = { name: name, lat: lat, lng: lng, r: REVEAL_KM, by: S.who, at: Date.now() };
+  if (S.db) {
+    S.db.collection('discoveries').doc(uid()).set(rec).catch(function () { toast('Could not save that discovery.', '⚠️'); });
+  } else {
+    rec.id = uid(); S.regions.push(rec);
+  }
+  baseDirty = true; renderHop(); draw();
+  toast('New area discovered: ' + name, '🌟', 4200);
+  sparkle();
+  return true;
+}
+
+document.getElementById('btnDiscover').addEventListener('click', function () {
+  var b = this;
+  if (!navigator.geolocation || frameBlocked() === true) { locationHelp({ code: 1 }); return; }
+  b.disabled = true; b.textContent = 'Finding you…';
+  function done() { b.disabled = false; b.textContent = 'Discover this area'; }
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    S.me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    flyTo(S.me.lat, S.me.lng, Math.max(S.zoom, 11));
+    discover(S.me.lat, S.me.lng);
+    checkNearby();
+    done();
+  }, function (err) {
+    locationHelp(err);
+    done();
+  }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+});
+
+document.getElementById('btnLocate').addEventListener('click', function () {
+  if (!navigator.geolocation || frameBlocked() === true) { locationHelp({ code: 1 }); return; }
+
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    S.me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    flyTo(S.me.lat, S.me.lng, Math.max(S.zoom, 11.4));
+    checkNearby();
+  }, locationHelp, { enableHighAccuracy: true, timeout: 12000 });
+});
+
+document.getElementById('btnTogether').addEventListener('click', function () {
+  var a = HOMES.bruce, b = HOMES.elena;
+  flyTo((a.lat + b.lat) / 2, (a.lng + b.lng) / 2, 9.6);
+  toast('Chesapeake Beach and Arnold, on one map.', '🏡');
+});
+
+function frameBlocked() {
+  try {
+    var fp = document.featurePolicy || document.permissionsPolicy;
+    if (fp && typeof fp.allowsFeature === 'function') return fp.allowsFeature('geolocation') === false;
+  } catch (e) {}
+  try { if (window.top !== window.self) return null; } catch (e) { return null; }
+  return false;
+}
+
+function parseLatLng(txt) {
+  if (!txt) return null;
+  var m = String(txt).match(/(-?\d{1,2}(?:\.\d+)?)\s*[,\s\/]\s*(-?\d{1,3}(?:\.\d+)?)/);
+  if (!m) return null;
+  var la = parseFloat(m[1]), ln = parseFloat(m[2]);
+  if (!isFinite(la) || !isFinite(ln)) return null;
+  if (la < -90 || la > 90 || ln < -180 || ln > 180) return null;
+  return { lat: la, lng: ln };
+}
+
+function runDiagnostic(btn) {
+  var out = document.getElementById('diag');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  var rows = [];
+  function row(k, v) { rows.push('<dt>' + esc(k) + '</dt><dd>' + v + '</dd>'); }
+  var ok = '<span style="color:#2E7D5B">Yes</span>', no = '<span style="color:#C2415F">No</span>';
+
+  var framed = true;
+  try { framed = window.top !== window.self; } catch (e) { framed = true; }
+  row('Secure page', location.protocol === 'https:' ? ok : no);
+  row('Inside a frame', framed ? 'Yes' : 'No');
+  row('Location API present', navigator.geolocation ? ok : no);
+  var fb = frameBlocked();
+  row('Frame allows location', fb === true ? no : (fb === false ? ok : 'Cannot tell on this browser'));
+
+  function finish(verdict, advice) {
+    out.innerHTML = '<dl class="kv">' + rows.join('') + '</dl>' +
+      '<p class="note"><b>' + verdict + '</b></p><p class="hint">' + advice + '</p>';
+    btn.disabled = false; btn.textContent = 'Run the check again';
+  }
+
+  function probe() {
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      row('Live fix', ok + ' (accurate to about ' + Math.round(pos.coords.accuracy) + ' m)');
+      S.me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      finish('Location is working now.',
+        'Close this and tap <b>Discover this area</b>, or use the coordinates ' +
+        pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4) + ' in the box above.');
+    }, function (e) {
+      var names = { 1: 'Refused (permission denied)', 2: 'Unavailable (no signal or no source)', 3: 'Timed out' };
+      row('Live fix', no + ' &mdash; ' + (names[e.code] || 'error ' + e.code));
+      if (e.code === 1) {
+        finish('Something is refusing the request.',
+          'In order of likelihood:<br><br>' +
+          '<b>1.</b> If you are reading this <b>inside the Claude app</b>, iOS gives location to the <i>app</i>, not to Safari. Open <b>Settings &rarr; Claude &rarr; Location</b> and set <b>While Using the App</b>. Allowing it in Safari does nothing here.<br><br>' +
+          '<b>2.</b> Open the map link in <b>Safari itself</b> instead of inside the app, then allow the prompt.<br><br>' +
+          '<b>3.</b> <b>Settings &rarr; Privacy &amp; Security &rarr; Location Services</b> must be on, with <b>Precise Location</b> on for your browser.<br><br>' +
+          'If all three are set and it still refuses, the frame this map runs in is blocking it and nothing on your phone will change that. Use the coordinate box &mdash; it works just as well.');
+      } else if (e.code === 3) {
+        finish('Your phone could not get a fix in time.',
+          'Step outside or wait a moment and run the check again. Indoors and in a moving car it can take a while.');
+      } else {
+        finish('Your phone has no location source right now.',
+          'Turn Wi-Fi on (it helps positioning even without joining a network), leave Low Power Mode, and try again.');
+      }
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  }
+
+  if (!navigator.geolocation) { finish('This browser has no location API at all.', 'Use the coordinate box above.'); return; }
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then(function (p) {
+      row('Permission state', p.state === 'granted' ? ok : (p.state === 'denied' ? no : 'Will ask'));
+      probe();
+    }).catch(probe);
+  } else probe();
+}
+
+function locationHelp(err) {
+  var blocked = frameBlocked();
+  var why, body;
+  if (blocked === true || (err && err.code === 1)) {
+    why = 'This page is not allowed to use location';
+    body = '<p class="note">Nothing is wrong with your phone. The map runs inside a frame that will not pass location through, so allowing it in Safari does not reach it. Use either of the two below — both work exactly the same once the area is cleared.</p>';
+  } else if (err && err.code === 3) {
+    why = 'Your phone took too long to find a signal';
+    body = '<p class="note">Try again in a moment, or place it by hand below.</p>';
+  } else {
+    why = 'No location came back';
+    body = '<p class="note">Place it by hand below — it works the same.</p>';
+  }
+  var nt = nearestTown(S.center.lat, S.center.lng);
+  openSheet(
+    head('Let us place you by hand', why) + body +
+    '<h3 style="font-family:var(--fdisp);font-size:15px;color:var(--deep);margin:18px 0 8px">1 &middot; Use the middle of the map</h3>' +
+    '<p class="hint">Drag the map until the centre of the screen is where you are, then:</p>' +
+    '<div class="sheet-actions" style="margin-bottom:6px">' +
+      '<button class="pxbtn primary" type="button" data-act="discover-center">Clear here &mdash; ' + esc(nt.name) + '</button>' +
+    '</div>' +
+    '<h3 style="font-family:var(--fdisp);font-size:15px;color:var(--deep);margin:20px 0 8px">2 &middot; Paste your coordinates</h3>' +
+    '<p class="hint">In Google Maps, press and hold where you are &mdash; the coordinates appear at the top, tap to copy. Apple Maps shows them under a dropped pin. A pasted map link works too.</p>' +
+    '<div class="field"><label for="ll-in">Coordinates or map link</label>' +
+      '<input id="ll-in" type="text" inputmode="text" autocomplete="off" placeholder="40.9269, -75.2026"></div>' +
+    '<div class="sheet-actions">' +
+      '<button class="pxbtn gold" type="button" data-act="use-latlng">Go there and clear it</button>' +
+      '<button class="pxbtn" type="button" data-act="close">Not yet</button>' +
+    '</div>' +
+    '<h3 style="font-family:var(--fdisp);font-size:15px;color:var(--deep);margin:20px 0 8px">Why can it not find me?</h3>' +
+    '<div class="sheet-actions" style="margin-bottom:8px">' +
+      '<button class="pxbtn" type="button" data-act="diagnose">Run the check</button></div>' +
+    '<div id="diag"></div>'
+  );
+}
+
+function checkNearby() {
+  if (!S.me) return;
+  /* arriving somewhere new clears it without a second tap */
+  discover(S.me.lat, S.me.lng, true);
+  for (var i = 0; i < S.surprises.length; i++) {
+    var s = S.surprises[i];
+    if (s.opened || s.forWho !== S.who) continue;
+    if (haversine(S.me.lat, S.me.lng, s.lat, s.lng) <= (s.unlockKm || UNLOCK_KM)) {
+      toast('There is a letter for you here.', '\ud83d\udc8c', 6000);
+      openItem({ kind: 'surprise', id: s.id });
+      break;
+    }
+  }
+}
+
+function sparkle() {
+  if (reduceMotion) return;
+  var stage = document.getElementById('stage');
+  for (var i = 0; i < 9; i++) {
+    (function (i) {
+      setTimeout(function () {
+        var s = document.createElement('span');
+        s.className = 'sparkle';
+        s.textContent = i % 3 === 0 ? '✨' : '💗';
+        s.style.left = (30 + Math.random() * 40) + '%';
+        s.style.top = (45 + Math.random() * 25) + '%';
+        stage.appendChild(s);
+        setTimeout(function () { s.remove(); }, 2700);
+      }, i * 110);
+    })(i);
+  }
+}
+
+/* ============================== placing ============================== */
+var placingEl = document.getElementById('placing');
+var crossEl = document.getElementById('crosshair');
+function startPlacing(kind, starterId) {
+  S.placing = { kind: kind, starterId: starterId || null };
+  document.getElementById('placingText').textContent =
+    kind === 'memory' ? 'Tap where this happened' : 'Tap where you want to hide it';
+  placingEl.classList.add('on'); crossEl.classList.add('on');
+  closeSheet();
+}
+function stopPlacing() { S.placing = null; placingEl.classList.remove('on'); crossEl.classList.remove('on'); }
+document.getElementById('placeCancel').addEventListener('click', stopPlacing);
+document.getElementById('placeHere').addEventListener('click', function () {
+  if (S.placing) placeAt({ lat: S.center.lat, lng: S.center.lng });
+});
+function placeAt(ll) {
+  var p = S.placing; if (!p) return;
+  stopPlacing();
+  if (p.kind === 'memory') memoryForm(ll, p.starterId);
+  else surpriseForm(ll);
+}
+document.getElementById('btnMemory').addEventListener('click', function () { startPlacing('memory'); });
+document.getElementById('btnSurprise').addEventListener('click', function () { startPlacing('surprise'); });
+
+/* ============================== forms ============================== */
+function todayISO() {
+  var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function memoryForm(ll, starterId, prefillTitle) {
+  var nt = nearestTown(ll.lat, ll.lng);
+  openSheet(
+    head('New memory', nt.name) +
+    '<div class="field"><label for="m-title">Title</label>' +
+      '<input id="m-title" type="text" maxlength="80" placeholder="title your memory &lt;3" value="' + esc(prefillTitle || '') + '"></div>' +
+    '<div class="rowfields">' +
+      '<div class="field"><label for="m-date">Date</label><input id="m-date" type="date" value="' + todayISO() + '"></div>' +
+      '<div class="field"><label for="m-photo">Photo</label><input id="m-photo" type="file" accept="image/*"></div>' +
+    '</div>' +
+    '<div class="field"><label for="m-note">Note</label><textarea id="m-note" maxlength="900" placeholder="What you want to remember about it."></textarea></div>' +
+    '<p class="hint">Pinned near ' + esc(nt.name) + ' — roughly where it happened, not an exact address.</p>' +
+    '<div class="sheet-actions">' +
+      '<button class="pxbtn primary" type="button" data-act="save-memory" data-lat="' + ll.lat + '" data-lng="' + ll.lng + '" data-starter="' + esc(starterId || '') + '">Save memory</button>' +
+      '<button class="pxbtn" type="button" data-act="close">Cancel</button>' +
+    '</div>'
+  );
+  setTimeout(function () { var e = document.getElementById('m-title'); if (e) e.focus(); }, 120);
+}
+
+function shrinkImage(file, cb) {
+  var img = new Image(), url = URL.createObjectURL(file);
+  img.onload = function () {
+    var max = 1100, w = img.width, h = img.height;
+    var sc = Math.min(1, max / Math.max(w, h));
+    var c = document.createElement('canvas');
+    c.width = Math.round(w * sc); c.height = Math.round(h * sc);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    c.toBlob(function (blob) { cb(blob, c); }, 'image/jpeg', 0.82);
+  };
+  img.onerror = function () { URL.revokeObjectURL(url); cb(null, null); };
+  img.src = url;
+}
+function smallDataUrl(canvas) {
+  var q = 0.7, u;
+  for (var i = 0; i < 5; i++) {
+    u = canvas.toDataURL('image/jpeg', q);
+    if (u.length < 170000) return u;
+    q -= 0.12;
+  }
+  return null;
+}
+
+function saveMemory(btn) {
+  var title = (document.getElementById('m-title').value || '').trim();
+  if (!title) { document.getElementById('m-title').focus(); toast('Give it a title first.', '✏️'); return; }
+  var rec = {
+    title: title,
+    note: (document.getElementById('m-note').value || '').trim(),
+    date: document.getElementById('m-date').value || todayISO(),
+    by: S.who, lat: parseFloat(btn.dataset.lat), lng: parseFloat(btn.dataset.lng), at: Date.now()
+  };
+  var starter = btn.dataset.starter;
+  var file = document.getElementById('m-photo').files[0];
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  function finish() {
+    if (starter) { S.starterUsed[starter] = 1; try { localStorage.setItem('ow.starters', JSON.stringify(S.starterUsed)); } catch (e) {} }
+    rec.id = uid();
+    /* keep it here first — this copy never depends on the network */
+    S.memories = mergeById([rec], S.memories);
+    LS.write('memories', LS.read('memories').concat([rec]));
+    if (S.db) S.db.collection('memories').doc(rec.id).set(rec).then(after, function (e) {
+      after();
+      toast('Saved on this device. It could not reach the shared world (' + ((e && e.code) || 'error') + ').', '\u26a0\ufe0f', 6000);
+    });
+    else after();
+  }
+  function after() {
+    discover(rec.lat, rec.lng, true);
+    closeSheet(); draw(); if (calEl.classList.contains('open')) renderCal();
+    toast('Memory saved: ' + rec.title, '💗'); sparkle();
+  }
+  function fail() { btn.disabled = false; btn.textContent = 'Save memory'; toast('Could not save that — try again.', '⚠️'); }
+
+  if (!file) { finish(); return; }
+  shrinkImage(file, function (blob, canvas) {
+    if (!blob) { finish(); return; }
+    if (S.assets) {
+      S.assets.upload(blob).then(function (a) { rec.photoUrl = a.url; rec.assetId = a.id; finish(); })
+        .catch(function () { var u = canvas && smallDataUrl(canvas); if (u) rec.photoUrl = u; else toast('Photo was too large — saved the memory without it.', '📷', 5000); finish(); });
+    } else {
+      var u = canvas && smallDataUrl(canvas);
+      if (u) { rec.photoUrl = u; }
+      else { toast('Photo storage is not available to you, and this one is too big to store in the pin. Saved without it.', '\ud83d\udcf7', 7000); }
+      finish();
+    }
+  });
+}
+
+function surpriseForm(ll) {
+  var nt = nearestTown(ll.lat, ll.lng);
+  var them = other(S.who);
+  openSheet(
+    head('Leave a surprise', nt.name) +
+    '<p class="note">Sealed until ' + esc(whoName(them)) + ' is standing near this spot with the map open.</p>' +
+    '<div class="field"><label for="s-title">What they see on the envelope</label>' +
+      '<input id="s-title" type="text" maxlength="70" placeholder="Open me when you get here"></div>' +
+    '<div class="field"><label for="s-note">The letter</label><textarea id="s-note" maxlength="1200" placeholder="Say it here."></textarea></div>' +
+    '<div class="rowfields">' +
+      '<div class="field"><label for="s-km">Unlocks within</label><select id="s-km"><option value="1">1 km</option><option value="3" selected>3 km</option><option value="8">8 km</option></select></div>' +
+      '<div class="field"><label for="s-for">For</label><select id="s-for"><option value="' + them + '" selected>' + esc(whoName(them)) + '</option><option value="' + S.who + '">' + esc(whoName(S.who)) + '</option></select></div>' +
+    '</div>' +
+    '<div class="sheet-actions">' +
+      '<button class="pxbtn gold" type="button" data-act="save-surprise" data-lat="' + ll.lat + '" data-lng="' + ll.lng + '">Seal it</button>' +
+      '<button class="pxbtn" type="button" data-act="close">Cancel</button>' +
+    '</div>'
+  );
+  setTimeout(function () { var e = document.getElementById('s-title'); if (e) e.focus(); }, 120);
+}
+function saveSurprise(btn) {
+  var title = (document.getElementById('s-title').value || '').trim();
+  var note = (document.getElementById('s-note').value || '').trim();
+  if (!title && !note) { toast('Write something first.', '✏️'); return; }
+  var rec = {
+    title: title || 'A letter', note: note, by: S.who,
+    forWho: document.getElementById('s-for').value,
+    unlockKm: parseFloat(document.getElementById('s-km').value) || UNLOCK_KM,
+    lat: parseFloat(btn.dataset.lat), lng: parseFloat(btn.dataset.lng),
+    opened: false, at: Date.now()
+  };
+  btn.disabled = true; btn.textContent = 'Sealing…';
+  function after() { closeSheet(); draw(); toast('Sealed. It waits there until they arrive.', '💌', 4200); }
+  if (S.db) S.db.collection('surprises').doc(uid()).set(rec).then(after, function () {
+    btn.disabled = false; btn.textContent = 'Seal it'; toast('Could not seal that — try again.', '⚠️');
+  });
+  else { rec.id = uid(); S.surprises.push(rec); after(); }
+}
+
+/* ============================== detail cards ============================== */
+function fmtDate(d) {
+  if (!d) return '';
+  var p = d.split('-');
+  if (p.length !== 3) return d;
+  var M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return M[parseInt(p[1], 10) - 1] + ' ' + parseInt(p[2], 10) + ', ' + p[0];
+}
+function nearbyList(lat, lng, km) {
+  var out = [];
+  for (var i = 0; i < S.memories.length; i++) {
+    var m = S.memories[i];
+    if (haversine(lat, lng, m.lat, m.lng) <= km) out.push({ t: m.title, s: whoName(m.by) + (m.date ? ' · ' + fmtDate(m.date) : ''), lat: m.lat, lng: m.lng, ic: '💗' });
+  }
+  return out.slice(0, 8);
+}
+function listHtml(items, empty) {
+  if (!items.length) return '<p class="hint">' + esc(empty) + '</p>';
+  return '<div class="list">' + items.map(function (it) {
+    return '<button type="button" data-act="goto" data-lat="' + it.lat + '" data-lng="' + it.lng + '">' +
+      '<span class="ico">' + it.ic + '</span><span><span class="t">' + esc(it.t) + '</span><br><span class="s">' + esc(it.s) + '</span></span></button>';
+  }).join('') + '</div>';
+}
+
+function openItem(item) {
+  S.selected = item;
+  if (item.kind === 'home') {
+    var h = HOMES[item.who];
+    openSheet(
+      head(h.name + (item.who === 'elena' ? '’s castle' : '’s home base'), h.label) +
+      '<dl class="kv"><dt>Town</dt><dd>' + esc(h.label) + '</dd>' +
+        '<dt>Cleared</dt><dd>' + h.r + ' km around it</dd></dl>' +
+      '<p class="note">Approximate town location — the map never holds a street address.</p>' +
+      '<h3 style="font-family:var(--fdisp);font-size:15px;color:var(--deep);margin:16px 0 6px">Nearby</h3>' +
+      listHtml(nearbyList(h.lat, h.lng, 18), 'Looks like loving memories here have not been added yet!') +
+      '<div class="sheet-actions"><button class="pxbtn" type="button" data-act="goto" data-lat="' + h.lat + '" data-lng="' + h.lng + '">Centre here</button>' +
+      '<button class="pxbtn" type="button" data-act="close">Close</button></div>'
+    );
+    return;
+  }
+  if (item.kind === 'landmark') {
+    var lm = null;
+    for (var q = 0; q < LANDMARKS.length; q++) if (LANDMARKS[q][0] === item.id) lm = LANDMARKS[q];
+    if (!lm) return;
+    var mems = nearbyList(lm[2], lm[3], 6);
+    if (lm[8] && !isRevealed(lm[2], lm[3], 1.06)) {
+      openSheet(
+        head(lm[1], 'On the way') +
+        '<p><span class="pill locked">Planned \u2014 not there yet</span></p>' +
+        '<p class="note">' + esc(lm[5]) + '</p>' +
+        '<p class="hint">The clouds here lift the day we land. Until then it just sits on the map, waiting on us.</p>' +
+        '<div class="sheet-actions">' +
+          '<button class="pxbtn primary" type="button" data-act="goto" data-lat="' + lm[2] + '" data-lng="' + lm[3] + '">Centre here</button>' +
+          '<button class="pxbtn" type="button" data-act="close">Close</button>' +
+        '</div>'
+      );
+      return;
+    }
+    openSheet(
+      head(lm[1], nearestTown(lm[2], lm[3]).name) +
+      '<p class="note">' + esc(lm[5]) + '</p>' +
+      '<h3 style="font-family:var(--fdisp);font-size:15px;color:var(--deep);margin:18px 0 6px">Our memories here</h3>' +
+      listHtml(mems, 'Looks like loving memories here have not been added yet!') +
+      '<div class="sheet-actions">' +
+        '<button class="pxbtn primary" type="button" data-act="mem-at" data-lat="' + lm[2] + '" data-lng="' + lm[3] + '">Add a memory here</button>' +
+        '<button class="pxbtn" type="button" data-act="close">Close</button>' +
+      '</div>'
+    );
+    return;
+  }
+  if (item.kind === 'starter') {
+    var st = null;
+    for (var i = 0; i < STARTERS.length; i++) if (STARTERS[i][0] === item.id) st = STARTERS[i];
+    if (!st) return;
+    memoryForm({ lat: st[2], lng: st[3] }, st[0], '');
+    return;
+  }
+  if (item.kind === 'memory') {
+    var m = null;
+    for (var j = 0; j < S.memories.length; j++) if (S.memories[j].id === item.id) m = S.memories[j];
+    if (!m) return;
+    openSheet(
+      head(m.title, fmtDate(m.date) + ' · ' + whoName(m.by)) +
+      photoImg(m) +
+      (m.note ? '<p class="note">' + esc(m.note).replace(/\n/g, '<br>') + '</p>' : '<p class="hint">No note on this one.</p>') +
+      '<dl class="kv"><dt>Near</dt><dd>' + esc(nearestTown(m.lat, m.lng).name) + '</dd></dl>' +
+      '<div class="sheet-actions">' +
+        '<button class="pxbtn primary" type="button" data-act="edit-memory" data-id="' + esc(m.id) + '">Edit</button>' +
+        '<button class="pxbtn" type="button" data-act="close">Close</button>' +
+        '<button class="pxbtn" type="button" data-act="del-memory" data-id="' + esc(m.id) + '">Remove</button>' +
+      '</div>'
+    );
+    return;
+  }
+  if (item.kind === 'surprise') {
+    var s = null;
+    for (var n = 0; n < S.surprises.length; n++) if (S.surprises[n].id === item.id) s = S.surprises[n];
+    if (!s) return;
+    var mine = s.by === S.who, forMe = s.forWho === S.who;
+    var d2 = S.me ? haversine(S.me.lat, S.me.lng, s.lat, s.lng) : null;
+    var near = d2 != null && d2 <= (s.unlockKm || UNLOCK_KM);
+    if (s.opened || (mine && !forMe)) {
+      openSheet(
+        head(s.title, (s.opened ? 'Opened' : 'Sealed — yours') + ' · from ' + whoName(s.by)) +
+        '<p class="note">' + esc(s.note).replace(/\n/g, '<br>') + '</p>' +
+        '<div class="sheet-actions"><button class="pxbtn" type="button" data-act="close">Close</button>' +
+        (mine ? '<button class="pxbtn" type="button" data-act="del-surprise" data-id="' + esc(s.id) + '">Remove</button>' : '') + '</div>'
+      );
+    } else if (forMe) {
+      openSheet(
+        head(s.title, 'From ' + whoName(s.by)) +
+        '<p><span class="pill locked">Sealed</span></p>' +
+        '<p class="note">' + (near ? 'You are here. Open it.' :
+          'It opens within ' + (s.unlockKm || UNLOCK_KM) + ' km of this spot.' + (d2 != null ? ' You are about ' + Math.round(d2) + ' km away.' : ' Use <b>Find me</b> to check.')) + '</p>' +
+        '<div class="sheet-actions">' +
+          (near ? '<button class="pxbtn primary" type="button" data-act="open-surprise" data-id="' + esc(s.id) + '">Open it</button>' : '') +
+          '<button class="pxbtn" type="button" data-act="close">Close</button></div>'
+      );
+    } else {
+      openSheet(head('A sealed letter', 'Not addressed to you') +
+        '<p class="note">Someone left this for someone else. Leave it be.</p>' +
+        '<div class="sheet-actions"><button class="pxbtn" type="button" data-act="close">Close</button></div>');
+    }
+  }
+}
+
+function openSurprise(id) {
+  var s = null; for (var i = 0; i < S.surprises.length; i++) if (S.surprises[i].id === id) s = S.surprises[i];
+  if (!s) return;
+  s.opened = true; s.openedAt = Date.now();
+  if (S.db) S.db.collection('surprises').doc(id).update({ opened: true, openedAt: s.openedAt }).catch(function(){});
+  sparkle(); draw(); openItem({ kind: 'surprise', id: id });
+}
+function editMemory(id) {
+  var m = null;
+  for (var i = 0; i < S.memories.length; i++) if (S.memories[i].id === id) m = S.memories[i];
+  if (!m) return;
+  openSheet(
+    head('Edit memory', nearestTown(m.lat, m.lng).name) +
+    photoImg(m) +
+    '<div class="field"><label for="e-date">Date it happened</label>' +
+      '<input id="e-date" type="date" value="' + esc(m.date || todayISO()) + '"></div>' +
+    '<div class="field"><label for="e-title">Title</label>' +
+      '<input id="e-title" type="text" maxlength="80" value="' + esc(m.title || '') + '"></div>' +
+    '<div class="field"><label for="e-note">Note</label>' +
+      '<textarea id="e-note" maxlength="900">' + esc(m.note || '') + '</textarea></div>' +
+    '<p class="hint">The photo and the spot on the map stay as they are. Changing the date moves it in the calendar.</p>' +
+    '<div class="sheet-actions">' +
+      '<button class="pxbtn primary" type="button" data-act="save-edit" data-id="' + esc(m.id) + '">Save changes</button>' +
+      '<button class="pxbtn" type="button" data-act="close">Cancel</button>' +
+    '</div>'
+  );
+}
+
+function saveMemoryEdit(btn) {
+  var id = btn.dataset.id, m = null, i;
+  for (i = 0; i < S.memories.length; i++) if (S.memories[i].id === id) m = S.memories[i];
+  if (!m) return;
+  var patch = {
+    date: document.getElementById('e-date').value || m.date || todayISO(),
+    title: (document.getElementById('e-title').value || '').trim() || m.title,
+    note: (document.getElementById('e-note').value || '').trim()
+  };
+  var moved = patch.date !== m.date;
+  m.date = patch.date; m.title = patch.title; m.note = patch.note;
+  LS.write('memories', S.memories);
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  function done() {
+    draw();
+    if (calEl.classList.contains('open')) renderCal();
+    openItem({ kind: 'memory', id: id });
+    toast(moved ? 'Moved to ' + fmtDate(patch.date) : 'Memory updated.', '\ud83d\udc97', 3400);
+  }
+  if (S.db) {
+    S.db.collection('memories').doc(id).update(patch).then(done, function (e) {
+      done();
+      toast('Changed here, but not in the shared world (' + ((e && e.code) || 'error') + ').', '\u26a0\ufe0f', 6000);
+    });
+  } else done();
+}
+
+function hiddenSet() {
+  var out = {}, i;
+  for (i in RETIRED) out[i] = 1;
+  try { (JSON.parse(localStorage.getItem('ow.hidden') || '[]')).forEach(function (k) { out[k] = 1; }); } catch (e) {}
+  for (i in S.deleted) out[i] = 1;
+  return out;
+}
+function rememberHidden(id) {
+  S.deleted[id] = 1;
+  try {
+    var cur = JSON.parse(localStorage.getItem('ow.hidden') || '[]');
+    if (cur.indexOf(id) < 0) cur.push(id);
+    localStorage.setItem('ow.hidden', JSON.stringify(cur));
+  } catch (e) {}
+}
+
+function delMemory(id) {
+  rememberHidden(id);
+  S.memories = S.memories.filter(function (m) { return m.id !== id; });
+  LS.write('memories', S.memories);
+  closeSheet(); draw();
+  if (calEl && calEl.classList.contains('open')) renderCal();
+  if (!S.db) { toast('Memory removed.', '\ud83d\uddd1\ufe0f'); return; }
+  /* A tombstone in the shared world, so it stays gone on every device even if
+     the delete itself is refused. */
+  S.db.collection('deleted').doc(id).set({ at: Date.now(), by: S.who }).catch(function () {});
+  S.db.collection('memories').doc(id).delete().then(function () {
+    toast('Memory removed.', '\ud83d\uddd1\ufe0f');
+  }, function (e) {
+    toast('Removed from your world. The shared copy refused (' + ((e && e.code) || 'error') + ') — it stays hidden anyway.', '\ud83d\uddd1\ufe0f', 6500);
+  });
+}
+function delSurprise(id) {
+  if (S.db) S.db.collection('surprises').doc(id).delete().catch(function(){});
+  S.surprises = S.surprises.filter(function (s) { return s.id !== id; });
+  LS.write('surprises', S.surprises);
+  closeSheet(); draw(); toast('Letter removed.', '🗑️');
+}
+
+/* ============================== calendar ============================== */
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var DOW = ['S','M','T','W','T','F','S'];
+var CAL_MIN = { y: 2026, m: 4 };          /* May 2026 — nothing before this */
+var calCur = null;
+var calEl = document.getElementById('cal');
+
+function monthMemories(y, m) {
+  var key = y + '-' + (m < 9 ? '0' : '') + (m + 1);
+  return S.memories.filter(function (x) { return (x.date || '').slice(0, 7) === key; })
+    .sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
+}
+function beforeMin(y, m) { return y < CAL_MIN.y || (y === CAL_MIN.y && m < CAL_MIN.m); }
+
+function renderCal() {
+  var y = calCur.y, m = calCur.m;
+  document.getElementById('calMonth').innerHTML = MONTHS[m] + '<span class="yr">' + y + '</span>';
+  document.getElementById('calPrev').disabled = beforeMin(m === 0 ? y - 1 : y, m === 0 ? 11 : m - 1);
+
+  var mems = monthMemories(y, m), body = document.getElementById('calBody');
+
+  if (!mems.length) {
+    body.innerHTML =
+      '<div class="cal-empty"><div class="big">' + MONTHS[m] + '</div>' +
+      '<p>Add your favorite memories!</p></div>';
+    return;
+  }
+
+  var byDay = {};
+  mems.forEach(function (x) { var d = parseInt((x.date || '').slice(8, 10), 10); (byDay[d] = byDay[d] || []).push(x); });
+
+  var first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
+  var now = new Date(), isNow = now.getFullYear() === y && now.getMonth() === m;
+  var html = '<div class="cal-grid">';
+  for (var d = 0; d < 7; d++) html += '<div class="cal-dow">' + DOW[d] + '</div>';
+  for (var b = 0; b < first; b++) html += '<div class="cal-day blank"></div>';
+  for (var n = 1; n <= days; n++) {
+    var hit = byDay[n];
+    html += '<' + (hit ? 'button type="button" data-day="' + n + '"' : 'div') +
+      ' class="cal-day' + (hit ? ' has' : '') + (isNow && now.getDate() === n ? ' today' : '') + '">' +
+      '<span>' + n + '</span>' + (hit ? '<span class="hrt">' + (hit.length > 1 ? '\ud83d\udc97\u00d7' + hit.length : '\ud83d\udc97') + '</span>' : '') +
+      '</' + (hit ? 'button' : 'div') + '>';
+  }
+  html += '</div><div class="cal-list">';
+  mems.forEach(function (x) {
+    html += '<button class="cal-item" type="button" data-mem="' + esc(x.id) + '">' +
+(photoCandidates(x).length ? photoImg(x, '') : '<span class="ph">\ud83d\udc97</span>') +
+      '<span><span class="t">' + esc(x.title) + '</span><br><span class="s">' +
+      esc(fmtDate(x.date)) + ' \u00b7 ' + esc(whoName(x.by)) + ' \u00b7 ' + esc(nearestTown(x.lat, x.lng).name) +
+      '</span></span></button>';
+  });
+  html += '</div><div class="cal-count">' + mems.length + (mems.length === 1 ? ' memory' : ' memories') + ' this month</div>';
+  body.innerHTML = html;
+}
+
+function openCal() {
+  if (!calCur) {
+    var n = new Date();
+    calCur = { y: n.getFullYear(), m: n.getMonth() };
+    if (beforeMin(calCur.y, calCur.m)) calCur = { y: CAL_MIN.y, m: CAL_MIN.m };
+  }
+  renderCal(); calEl.classList.add('open'); calEl.scrollTop = 0;
+}
+function closeCal() { calEl.classList.remove('open'); }
+function stepCal(dir) {
+  var y = calCur.y, m = calCur.m + dir;
+  if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+  if (beforeMin(y, m)) return;
+  calCur = { y: y, m: m }; renderCal(); calEl.scrollTop = 0;
+}
+function placesList() {
+  var rows = [], i;
+  for (i = 0; i < LANDMARKS.length; i++) {
+    var lm = LANDMARKS[i];
+    var pl = !!(lm[8] && !isRevealed(lm[2], lm[3], 1.06));
+    if (!pl && !isRevealed(lm[2], lm[3], 1.06)) continue;
+    rows.push({ t: lm[1], s: pl ? 'Planned \u2014 not there yet' : nearestTown(lm[2], lm[3]).name,
+      lat: lm[2], lng: lm[3], ic: pl ? '\u2708\ufe0f' : (LM_ICON[lm[4]] || '\ud83d\udccd'), z: pl ? 10.6 : 12.6 });
+  }
+  var seen = {};
+  for (i = 0; i < rows.length; i++) seen[rows[i].t.toLowerCase()] = 1;
+  var rs = allRegions();
+  for (i = 0; i < rs.length; i++) {
+    if (seen[(rs[i].name || '').toLowerCase()]) continue;
+    seen[(rs[i].name || '').toLowerCase()] = 1;
+    rows.push({
+      t: rs[i].name,
+      s: rs[i].home ? 'Where we started' : 'Cleared by ' + whoName(rs[i].by),
+      lat: rs[i].lat, lng: rs[i].lng, ic: rs[i].home ? '\ud83c\udfe1' : '\u2b50', z: 11.2
+    });
+  }
+  return rows;
+}
+
+var hopIdx = 0;
+function renderHop() {
+  var rows = placesList(), n = rows.length;
+  var nameEl = document.getElementById('hopName');
+  if (!n) { document.getElementById('hop').style.display = 'none'; return; }
+  document.getElementById('hop').style.display = 'flex';
+  if (hopIdx >= n) hopIdx = 0;
+  nameEl.innerHTML = '<span class="ic">' + rows[hopIdx].ic + '</span><span>' + esc(rows[hopIdx].t) + '</span>';
+  nameEl.title = 'See all ' + n + ' places';
+  document.getElementById('hopPrev').disabled = n < 2;
+  document.getElementById('hopNext').disabled = n < 2;
+}
+function hop(dir) {
+  var rows = placesList();
+  if (!rows.length) return;
+  hopIdx = (hopIdx + dir + rows.length) % rows.length;
+  var r = rows[hopIdx];
+  renderHop();
+  flyTo(r.lat, r.lng, r.z);
+  toast(r.t, r.ic === '\ud83c\udfe1' ? '\ud83c\udfe1' : '\u2728', 2200);
+}
+document.getElementById('hopPrev').addEventListener('click', function () { hop(-1); });
+document.getElementById('hopNext').addEventListener('click', function () { hop(1); });
+document.getElementById('hopName').addEventListener('click', function () { openPlaces(); });
+
+function openPlaces() {
+  var rows = placesList();
+  openSheet(
+    head('Our places', rows.length + (rows.length === 1 ? ' place' : ' places') + ' so far') +
+    '<p class="hint">Everywhere the clouds have lifted, and what is still ahead of us. Tap one to go straight there.</p>' +
+    (S.db ? '' : (PUBLIC_BUILD
+      ? '<p class="note" style="border:3px solid var(--gold);background:#FFF9EC;padding:10px 12px">' +
+        '<b>This is the open build.</b> The map and the places ship with the page; there is no shared database behind it — ' +
+        'anything you clear or pin lives in this browser and nowhere else.</p>'
+      : '<p class="note" style="border:3px solid var(--gold);background:#FFF9EC;padding:10px 12px">' +
+        '<b>The shared world is not connected on this device.</b> You are seeing only the places built into the page — ' +
+        'anything either of you clears will not save or reach the other until it reconnects.</p>')) +
+    '<div class="list">' + rows.map(function (r) {
+      return '<button type="button" data-act="goto" data-lat="' + r.lat + '" data-lng="' + r.lng + '" data-z="' + r.z + '">' +
+        '<span class="ico">' + r.ic + '</span><span><span class="t">' + esc(r.t) + '</span><br>' +
+        '<span class="s">' + esc(r.s) + '</span></span></button>';
+    }).join('') + '</div>' +
+    '<div class="sheet-actions"><button class="pxbtn" type="button" data-act="close">Close</button></div>'
+  );
+}
+document.getElementById('btnPlaces').addEventListener('click', openPlaces);
+document.getElementById('btnHere').addEventListener('click', function () {
+  discover(S.center.lat, S.center.lng);
+});
+document.getElementById('btnCalendar').addEventListener('click', openCal);
+document.getElementById('calClose').addEventListener('click', closeCal);
+document.getElementById('calPrev').addEventListener('click', function () { stepCal(-1); });
+document.getElementById('calNext').addEventListener('click', function () { stepCal(1); });
+calEl.addEventListener('click', function (e) {
+  var mb = e.target.closest('[data-mem]');
+  if (mb) {
+    var id = mb.dataset.mem, mem = null;
+    for (var i = 0; i < S.memories.length; i++) if (S.memories[i].id === id) mem = S.memories[i];
+    closeCal();
+    if (mem) { flyTo(mem.lat, mem.lng, 12.4); openItem({ kind: 'memory', id: id }); }
+    return;
+  }
+  var db = e.target.closest('[data-day]');
+  if (db) {
+    var day = parseInt(db.dataset.day, 10);
+    var list = monthMemories(calCur.y, calCur.m).filter(function (x) { return parseInt((x.date || '').slice(8, 10), 10) === day; });
+    if (list.length === 1) { closeCal(); flyTo(list[0].lat, list[0].lng, 12.4); openItem({ kind: 'memory', id: list[0].id }); }
+    else if (list.length > 1) {
+      var el = calEl.querySelector('[data-mem="' + list[0].id + '"]');
+      if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+});
+
+/* ============================== full photo ============================== */
+var lbEl = document.getElementById('lightbox');
+function openPhoto(src, caption) {
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lbCap').textContent = caption || '';
+  lbEl.classList.add('on');
+}
+function closePhoto() { lbEl.classList.remove('on'); document.getElementById('lbImg').src = ''; }
+lbEl.addEventListener('click', closePhoto);
+document.getElementById('lbClose').addEventListener('click', function (e) { e.stopPropagation(); closePhoto(); });
+
+/* any saved photo opens full size */
+document.addEventListener('click', function (e) {
+  var img = e.target.closest('img');
+  if (!img || lbEl.contains(img)) return;
+  if (!img.classList.contains('memphoto') && !img.closest('.cal-item')) return;
+  e.preventDefault(); e.stopPropagation();
+  var row = img.closest('.cal-item');
+  var cap = img.classList.contains('memphoto')
+    ? (sheet.querySelector('h2') ? sheet.querySelector('h2').textContent : '')
+    : (row && row.querySelector('.t') ? row.querySelector('.t').textContent : '');
+  openPhoto(img.currentSrc || img.src, cap);
+}, true);
+
+/* ============================== the line she opens to ============================== */
+var QUOTES = [
+  'Every map needs a place to start. Mine started the day I met you.',
+  'The world is only as big as the places we have stood in together. It keeps getting bigger.',
+  'Somewhere out there is a road we have not driven yet. It is already ours.',
+  'You are not a place on this map. You are the reason it has edges at all.',
+  'I would clear the fog off the whole earth just to watch you walk through it.',
+  'Home is not Chesapeake Beach or Arnold. Home is whichever one of us you are standing next to.',
+  'Every mile behind us was worth it for the ones still ahead.',
+  'The best thing I ever found, I was not even looking for.',
+  'You make ordinary roads feel like somewhere worth going.',
+  'One day this map will be too small for us. Good.',
+  'If the world ended at the water’s edge, I would still have everything.',
+  'The whole map is yours, Princess. I only drew it.',
+  'Some people collect places. I collect the way you look at them.',
+  'There is no view I would rather see than you seeing it first.',
+  'Two small dots on a very large world, and I would not trade our two for all the rest.',
+  'The fog only lifts where we have been. So let us be everywhere.',
+  'Loving you is the one direction I have never had to look up.',
+  'Wherever this goes next, I am already packed.',
+  'You turned a stretch of bay and two little towns into a whole world.',
+  'I do not need the map. I just want the company.',
+  'Every place we go becomes a place I love. It was never the places.',
+  'Come get lost with me. I know the way back.',
+  'If you ever wonder where you are — you are exactly where I want to be.',
+  'The clouds are still out there. I like our odds.'
+];
+var BIRTHDAY_QUOTES = [
+  'Today the world is a little bigger, because you are another year in it. Happy birthday, Princess.',
+  'Of every place on this map, the best one is wherever you are. Happy birthday.',
+  'A whole world, and it still started with you. Happy birthday, my Princess.'
+];
+
+function showQuote() {
+  var el = document.getElementById('quote'), line = document.getElementById('qLine');
+  var d = new Date(), pool = (d.getMonth() === 8 && d.getDate() === 12) ? BIRTHDAY_QUOTES : QUOTES;
+  var last = -1;
+  try { last = parseInt(localStorage.getItem('ow.q'), 10); } catch (e) {}
+  var i = Math.floor(Math.random() * pool.length);
+  if (pool.length > 1 && i === last) i = (i + 1) % pool.length;
+  try { localStorage.setItem('ow.q', String(i)); } catch (e) {}
+  line.textContent = pool[i];
+
+  var hearts = el.querySelector('.q-hearts');
+  hearts.innerHTML = '';
+  if (!reduceMotion) {
+    for (var h = 0; h < 10; h++) {
+      var sp = document.createElement('span');
+      sp.textContent = h % 3 === 0 ? '\u2728' : '\ud83d\udc97';
+      sp.style.left = (6 + Math.random() * 88) + '%';
+      sp.style.bottom = (-6 + Math.random() * 30) + '%';
+      sp.style.animationDelay = (Math.random() * 5).toFixed(2) + 's';
+      sp.style.animationDuration = (5 + Math.random() * 3.5).toFixed(2) + 's';
+      hearts.appendChild(sp);
+    }
+  }
+
+  el.classList.remove('out'); el.classList.add('on');
+  var done = false;
+  function close() {
+    if (done) return; done = true;
+    el.classList.add('out');
+    setTimeout(function () { el.classList.remove('on', 'out'); }, 620);
+  }
+  el.addEventListener('click', close);
+  window.addEventListener('keydown', function k(ev) { if (ev.key === 'Escape' || ev.key === 'Enter') { close(); window.removeEventListener('keydown', k); } });
+  setTimeout(close, 9000);
+}
+
+/* ============================== boot ============================== */
+function paintIntroSprites() {
+  [].forEach.call(document.querySelectorAll('[data-sprite]'), function (c) {
+    var g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    if (c.dataset.sprite === 'castle') drawSprite(g, SP.castle, PAL.castle, 36, 72, 5, '#FFFFFF');
+    else drawSprite(g, SP.cottage, PAL.gold, 36, 70, 5, '#FFFFFF');
+  });
+}
+function setWho(k) {
+  S.who = k;
+  try { localStorage.setItem('ow.who', k); } catch (e) {}
+  document.getElementById('menam').textContent = whoName(k);
+  var h = HOMES[k];
+  S.center.lat = h.lat; S.center.lng = h.lng; S.zoom = 11.2;
+  baseDirty = true;
+  document.getElementById('intro').style.display = 'none';
+  setViewButtons('local');
+  renderHop();
+  resize();
+  if (k === 'elena') showQuote();
+  else setTimeout(function () { toast('Welcome back to Our World, Bruce.', '\ud83d\uddfa\ufe0f', 3600); }, 500);
+}
+[].forEach.call(document.querySelectorAll('.whobtn'), function (b) {
+  b.addEventListener('click', function () { setWho(b.dataset.who); });
+});
+function worldStatus() {
+  var ok = '<span style="color:#2E7D5B">Yes</span>', no = '<span style="color:#C2415F">No</span>';
+  openSheet(
+    head('Shared world', DBS.db ? 'Connected' : 'Not connected') +
+    (DBS.db
+      ? '<p class="note">Everything either of you pins saves here and reaches the other. Tap below to prove it end to end.</p>'
+      : '<p class="note" style="border:3px solid var(--gold);background:#FFF9EC;padding:10px 12px">' +
+        '<b>Pins are saving on this device only.</b> ' + esc(DBS.note || 'The shared database is not available in this view.') + '</p>') +
+    '<dl class="kv">' +
+      '<dt>Viewer</dt><dd>' + (DBS.claude ? ok : no) + '</dd>' +
+      '<dt>Shared database</dt><dd>' + (DBS.db ? ok : no) + '</dd>' +
+      '<dt>Photo storage</dt><dd>' + (DBS.assets ? ok : 'No &mdash; photos are shrunk and stored in the pin instead') + '</dd>' +
+      '<dt>Places loaded</dt><dd>' + S.regions.length + ' from the shared world</dd>' +
+      '<dt>Memories loaded</dt><dd>' + S.memories.length + '</dd>' +
+      '<dt>Letters loaded</dt><dd>' + S.surprises.length + '</dd>' +
+      '<dt>Live updates</dt><dd>' + (DBS.live.memories ? ok : 'Not running — pull to refresh instead') + '</dd>' +
+    '</dl>' +
+    (function () {
+      var bad = [];
+      for (var k in DBS.errs) if (DBS.errs[k]) bad.push(k + ' &mdash; ' + esc(DBS.errs[k]));
+      return bad.length
+        ? '<p class="note" style="border:3px solid var(--gold);background:#FFF9EC;padding:10px 12px"><b>Trouble reading:</b><br>' + bad.join('<br>') + '</p>'
+        : '';
+    })() +
+    (DBS.db
+      ? '<div class="sheet-actions"><button class="pxbtn primary" type="button" data-act="world-pull">Pull everything again</button>' +
+        '<button class="pxbtn" type="button" data-act="world-test">Test it end to end</button>' +
+        '<button class="pxbtn" type="button" data-act="close">Close</button></div><div id="wtest"></div>'
+      : (PUBLIC_BUILD
+        ? '<h3 style="font-family:var(--fdisp);font-size:15px;color:var(--deep);margin:18px 0 6px">Why not</h3>' +
+          '<p class="hint">This is the open build — a single static page with the whole map inside it and no server behind it. ' +
+          'Everything works except sharing: pins live in this browser, on this device.<br><br>' +
+          'Wiring it to a real database is the next thing on the list.</p>' +
+          '<div class="sheet-actions"><button class="pxbtn" type="button" data-act="close">Close</button></div>'
+        : '<h3 style="font-family:var(--fdisp);font-size:15px;color:var(--deep);margin:18px 0 6px">How to fix it</h3>' +
+          '<p class="hint"><b>1.</b> Open the share menu on this page. If it is set to <b>public / anyone with the link</b>, change it to sharing with <b>specific people</b> and add Elena.<br><br>' +
+          '<b>2.</b> Reload. Come back here and this should say Connected.<br><br>' +
+          'The shared world only runs on a privately shared artifact. A public link switches it off.</p>' +
+          '<div class="sheet-actions"><button class="pxbtn" type="button" data-act="close">Close</button></div>'))
+  );
+}
+document.getElementById('worldchip').addEventListener('click', worldStatus);
+
+function worldTest(btn) {
+  var out = document.getElementById('wtest');
+  btn.disabled = true; btn.textContent = 'Testing…';
+  var stamp = Date.now(), ref = S.db.doc('meta/handshake');
+  ref.set({ at: stamp, by: S.who })
+    .then(function () { return ref.get(); })
+    .then(function (snap) {
+      var d = snap.data() || {};
+      if (d.at === stamp) {
+        out.innerHTML = '<p class="note" style="border:3px solid #57B894;background:#F0FBF6;padding:10px 12px">' +
+          '<b>It works.</b> Written and read back. Anything you pin now reaches her, and hers reaches you.</p>';
+      } else {
+        out.innerHTML = '<p class="note">Wrote it, but read back something different. Reload and try once more.</p>';
+      }
+      btn.disabled = false; btn.textContent = 'Test again';
+    })
+    .catch(function (e) {
+      out.innerHTML = '<p class="note" style="border:3px solid var(--gold);background:#FFF9EC;padding:10px 12px">' +
+        '<b>The write was refused.</b> Code: ' + esc((e && e.code) || 'unknown') + '. ' +
+        (((e && e.code) === 'invalid_argument')
+          ? 'This view can read but not write — most likely you have been given view-only access rather than edit.'
+          : esc((e && e.message) || '')) + '</p>';
+      btn.disabled = false; btn.textContent = 'Test again';
+    });
+}
+
+document.getElementById('mechip').addEventListener('click', function () {
+  openSheet(head('Who is exploring?', whoName(S.who)) +
+    '<p class="note">The map is shared. This only decides whose name goes on new pins, and who a sealed letter is meant for.</p>' +
+    '<div class="sheet-actions"><button class="pxbtn" type="button" data-act="switch-who">Switch explorer</button>' +
+    '<button class="pxbtn" type="button" data-act="close">Close</button></div>');
+});
+
+/* Memories removed for good. Baked in so a stale copy can never resurrect them. */
+var RETIRED = {};
+
+function hydrateLocal() {
+  var hidden = hiddenSet();
+  S.memories = mergeById(LS.read('memories'), SEED_MEMORIES).filter(function (m) { return !hidden[m.id]; });
+  S.memories.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+  S.regions = LS.read('discoveries');
+  S.surprises = LS.read('surprises');
+  baseDirty = true;
+}
+
+hydrateLocal();
+paintIntroSprites();
+setWorldChip();
+connect();
+var saved = null;
+try { saved = localStorage.getItem('ow.who'); } catch (e) {}
+if (saved === 'bruce' || saved === 'elena') setWho(saved);
+else resize();
+window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (lbEl.classList.contains('on')) closePhoto(); else if (calEl.classList.contains('open')) closeCal(); else if (S.placing) stopPlacing(); else closeSheet(); } });
+})();
+</script>
